@@ -1,0 +1,164 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function role() {
+      return get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role;
+    }
+
+    function isAdmin() {
+      return signedIn() && role() == "admin";
+    }
+
+    match /profiles/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+      allow update: if isAdmin();
+    }
+
+    match /learner_profiles/{id} {
+      allow read, write: if signedIn() &&
+        resource.data.parent_id == request.auth.uid;
+    }
+
+    match /tutor_applications/{id} {
+      allow create: if signedIn() &&
+        request.resource.data.applicant_id == request.auth.uid;
+      allow read: if signedIn() &&
+        (resource.data.applicant_id == request.auth.uid || isAdmin());
+      allow update: if signedIn() &&
+        (resource.data.applicant_id == request.auth.uid || isAdmin());
+    }
+
+    match /tutor_application_events/{id} {
+      allow create: if signedIn();
+      allow read: if signedIn();
+    }
+
+    match /notifications/{id} {
+      allow read, update: if signedIn() && resource.data.user_id == request.auth.uid;
+      allow create: if false;
+    }
+
+    match /audit_log/{id} {
+      allow read, create: if isAdmin();
+    }
+
+    match /tutor_listings/{id} {
+      // Public browse: published only. Owner + admin: full read.
+      allow read: if resource.data.published == true
+        || (signedIn() && (request.auth.uid == resource.data.tutor_id || isAdmin()));
+      allow create, update: if signedIn()
+        && request.auth.uid == request.resource.data.tutor_id
+        && role() == "tutor"
+        && request.auth.uid == id;
+      allow delete: if signedIn()
+        && request.auth.uid == resource.data.tutor_id
+        && role() == "tutor";
+    }
+
+    match /shortlist_items/{id} {
+      allow read, delete: if signedIn()
+        && resource.data.parent_id == request.auth.uid;
+      allow create: if signedIn()
+        && request.resource.data.parent_id == request.auth.uid
+        && (role() == "parent" || role() == "adult");
+    }
+
+    match /trial_bookings/{id} {
+      allow read: if signedIn() && (
+        resource.data.parent_id == request.auth.uid
+        || resource.data.tutor_id == request.auth.uid
+        || isAdmin()
+      );
+      allow create: if signedIn()
+        && request.resource.data.parent_id == request.auth.uid
+        && (role() == "parent" || role() == "adult")
+        && request.resource.data.parent_amount_cents == 0;
+      allow update: if signedIn() && (
+        resource.data.tutor_id == request.auth.uid
+        || resource.data.parent_id == request.auth.uid
+        || isAdmin()
+      );
+    }
+
+    match /ledger_entries/{id} {
+      allow read: if signedIn() && (
+        resource.data.tutor_id == request.auth.uid || isAdmin()
+      );
+      allow create, update, delete: if false;
+    }
+
+    match /payments/{id} {
+      allow read: if signedIn() && (
+        resource.data.parent_id == request.auth.uid || isAdmin()
+      );
+      allow create, update, delete: if false;
+    }
+
+    match /provider_events/{id} {
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    match /recurring_bookings/{id} {
+      allow read: if signedIn() && (
+        resource.data.parent_id == request.auth.uid ||
+        resource.data.tutor_id == request.auth.uid ||
+        isAdmin()
+      );
+      allow create, update, delete: if false;
+    }
+
+    match /scheduled_lessons/{id} {
+      allow read: if signedIn() && (
+        resource.data.parent_id == request.auth.uid ||
+        resource.data.tutor_id == request.auth.uid ||
+        isAdmin()
+      );
+      allow create, update, delete: if false;
+    }
+
+    match /attendance_records/{id} {
+      allow read: if signedIn() && (
+        resource.data.parent_id == request.auth.uid ||
+        resource.data.tutor_id == request.auth.uid ||
+        isAdmin()
+      );
+      allow create, update, delete: if false;
+    }
+
+    match /payout_requests/{id} {
+      allow read: if signedIn() && (
+        resource.data.tutor_id == request.auth.uid || isAdmin()
+      );
+      allow create, update, delete: if false;
+    }
+
+    match /message_threads/{id} {
+      allow read: if signedIn() && (
+        request.auth.uid in resource.data.participant_ids || isAdmin()
+      );
+      allow create, update, delete: if false;
+
+      match /messages/{messageId} {
+        allow read: if signedIn() && (
+          request.auth.uid in get(/databases/$(database)/documents/message_threads/$(id)).data.participant_ids
+          || isAdmin()
+        );
+        allow create, update, delete: if false;
+      }
+    }
+
+    match /progress_notes/{id} {
+      allow read: if signedIn() && (
+        resource.data.parent_id == request.auth.uid
+        || resource.data.tutor_id == request.auth.uid
+        || isAdmin()
+      );
+      allow create, update, delete: if false;
+    }
+  }
+}

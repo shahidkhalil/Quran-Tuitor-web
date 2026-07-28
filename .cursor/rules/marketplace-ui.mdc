@@ -1,0 +1,42 @@
+---
+description: Marketplace UI design system — tokens, shells, profiles, CTAs for all epics
+alwaysApply: true
+---
+
+# Quran Tutor — UI design patterns
+
+Reuse these patterns for Epics 5–7+ UI. Do not invent a new visual language.
+
+## Brand & tokens (`app/globals.css`)
+
+- Forest green primary `#0d4a3a` + warm gold accent `#c9a227` (not purple, not cream-serif terracotta clichés).
+- Fonts: Plus Jakarta (UI) + Fraunces (display via `.display-title`).
+- Prefer CSS vars: `--color-primary`, `--color-accent`, `--color-surface-elevated`, radii, shadows.
+- Utilities: `.panel-canvas`, `.panel-sidebar`, `.surface-card`, `.surface-card-interactive`, `.btn-panel` / `.btn-panel-primary|secondary`, `.status-pill-*`, `.eyebrow`, `.nav-glass`.
+
+## App shells (parent / tutor / admin)
+
+- Desktop: dark green sidebar (`.panel-sidebar`) + content column with sticky glass header.
+- Mobile: sticky top bar + horizontal scroll nav pills (`PanelNavLink`), not a random new nav.
+- Shared pieces: `UserAvatar`, notification **bell** (not inline dashboard lists), `PanelPageHeader`, `SignOutButton` in sidebar footer.
+- Home pages: eyebrow + title + short status + **stat strip** + **action cards** (`surface-card-interactive`).
+- Parent IA: Home → Browse → Learners → Bookings → Schedule → Messages → Account (no separate More tab; shortcuts live on Account).
+- Empty states: eyebrow + display title + one sentence + primary CTA (`btn-panel-primary`).
+- Checkout / success: `PanelPageHeader` + `TrustStrip` + `surface-card` package summary.
+
+## Marketing & public listing
+
+- Marketing: search hero, trust strip, card grids; auth-aware nav (dashboard CTA when signed in).
+- Tutor profile: Superprof-style — photo-first, free-trial badge, subject chips, sticky **Book free trial** (mobile bar + desktop card). Never “Contact”/pay-tutor-directly CTAs.
+- Currency/copy: **USD**; platform payments trust messaging.
+
+## Media & account
+
+- Profile photos: Cloudinary via `uploadProfilePhoto` → `profiles.photo_url`; tutors sync to listing.
+- Listing photo optional; fall back to profile photo on browse/detail.
+- Account photo UI: `/parent/account`, `/tutor/account`, `/admin/account` + `ProfilePhotoForm`.
+
+## Do / don’t
+
+- Do: rounded-full primary CTAs, soft cards, status pills, skeletons for loading lists.
+- Don’t: purple gradients, Inter/Roboto defaults, hero card clutter, notifications dumped on home, new shell layouts per feature.

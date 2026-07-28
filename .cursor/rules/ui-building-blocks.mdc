@@ -1,0 +1,26 @@
+---
+description: File locations for UI shells, listings, and profile photo patterns
+globs: "{app,src/components}/**/*.{tsx,ts,css}"
+alwaysApply: false
+---
+
+# UI building blocks — where to extend
+
+When adding Epic screens, extend existing shells/components; do not fork layouts.
+
+| Need | Use |
+|------|-----|
+| Parent chrome | `src/components/shell/parent-shell.tsx` |
+| Tutor chrome | `src/components/shell/tutor-shell.tsx` |
+| Admin chrome | `src/components/shell/admin-shell.tsx` |
+| Page title block | `PanelPageHeader` |
+| Nav link + active | `PanelNavLink` + `panel-icons` |
+| Avatar | `UserAvatar` |
+| Account photo upload | `ProfilePhotoForm` + `server/actions/profile.ts` |
+| Public listing | `listings/listing-detail.tsx` (Superprof pattern) |
+| Browse cards | `listings/browse-results.tsx` |
+| Trust copy | `TrustStrip` |
+| Notifications | `NotificationBellHost` in layouts only |
+| Design tokens | `app/globals.css` |
+
+New routes under `app/(parent|tutor|admin)/…` inherit the segment shell. Marketing stays in `app/(marketing)/` with `MarketingShell` / `MarketingNav`.

@@ -1,0 +1,119 @@
+import { PanelPageHeader } from "@/components/shell/panel-page-header";
+import { statusLabel } from "@/domain/tutor-applications";
+import { getMyApplication } from "@/server/actions/tutor-applications";
+import { getMyListing } from "@/server/actions/tutor-listings";
+import { getCurrentProfile } from "@/server/services/profile";
+import Link from "next/link";
+
+export const metadata = { title: "Tutor" };
+
+export default async function TutorHomePage() {
+  const profile = await getCurrentProfile();
+  const { application } = await getMyApplication();
+  const isVerified = profile?.role === "tutor";
+  const { listing } = isVerified ? await getMyListing() : { listing: null };
+
+  const statusText = isVerified
+    ? listing?.published
+      ? "Your listing is live for parents to discover."
+      : "Complete and publish your listing so parents can find you."
+    : application
+      ? `Application: ${statusLabel(application.status)}.`
+      : "Complete your application so our team can review your credentials and intro.";
+
+  return (
+    <>
+      <PanelPageHeader
+        eyebrow={isVerified ? "Verified tutor" : "Applicant"}
+        title="Tutor home"
+        description={statusText}
+        actions={
+          isVerified ? (
+            <Link href="/tutor/requests" className="btn-panel btn-panel-primary">
+              Trial requests
+            </Link>
+          ) : (
+            <Link
+              href="/tutor/application"
+              className="btn-panel btn-panel-primary"
+            >
+              {application ? "View application" : "Start application"}
+            </Link>
+          )
+        }
+      />
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <Link
+          href="/tutor/application"
+          className="surface-card surface-card-interactive block p-5"
+        >
+          <p className="eyebrow text-[var(--color-accent)]">Onboarding</p>
+          <p className="display-title mt-2 text-xl text-[var(--color-primary)]">
+            Application
+          </p>
+          <p className="mt-2 text-sm text-[var(--color-on-surface-muted)]">
+            {application
+              ? statusLabel(application.status)
+              : "Submit credentials for review"}
+          </p>
+        </Link>
+
+        {isVerified ? (
+          <>
+            <Link
+              href="/tutor/listing"
+              className="surface-card surface-card-interactive block p-5"
+            >
+              <p className="eyebrow text-[var(--color-accent)]">Marketplace</p>
+              <p className="display-title mt-2 text-xl text-[var(--color-primary)]">
+                Listing
+              </p>
+              <p className="mt-2 text-sm text-[var(--color-on-surface-muted)]">
+                {listing?.published
+                  ? "Published · edit anytime"
+                  : "Draft · publish to go live"}
+              </p>
+            </Link>
+            <Link
+              href="/tutor/requests"
+              className="surface-card surface-card-interactive block p-5"
+            >
+              <p className="eyebrow text-[var(--color-accent)]">Pipeline</p>
+              <p className="display-title mt-2 text-xl text-[var(--color-primary)]">
+                Trial requests
+              </p>
+              <p className="mt-2 text-sm text-[var(--color-on-surface-muted)]">
+                Accept, join, and summarise trials
+              </p>
+            </Link>
+            <Link
+              href="/tutor/calendar"
+              className="surface-card surface-card-interactive block p-5"
+            >
+              <p className="eyebrow text-[var(--color-accent)]">Teaching</p>
+              <p className="display-title mt-2 text-xl text-[var(--color-primary)]">
+                Calendar
+              </p>
+              <p className="mt-2 text-sm text-[var(--color-on-surface-muted)]">
+                Upcoming paid package lessons
+              </p>
+            </Link>
+            <Link
+              href="/tutor/earnings"
+              className="surface-card surface-card-interactive block p-5"
+            >
+              <p className="eyebrow text-[var(--color-accent)]">Ledger</p>
+              <p className="display-title mt-2 text-xl text-[var(--color-primary)]">
+                Earnings
+              </p>
+              <p className="mt-2 text-sm text-[var(--color-on-surface-muted)]">
+                Trial stipends, lesson net, and payouts
+              </p>
+            </Link>
+          </>
+        ) : null}
+      </div>
+    </>
+  );
+}
