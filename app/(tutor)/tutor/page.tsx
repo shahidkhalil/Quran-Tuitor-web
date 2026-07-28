@@ -1,6 +1,7 @@
 import { PanelPageHeader } from "@/components/shell/panel-page-header";
 import { statusLabel } from "@/domain/tutor-applications";
 import { getMyApplication } from "@/server/actions/tutor-applications";
+import { getTutorReviewSummary } from "@/server/actions/reviews";
 import { getMyListing } from "@/server/actions/tutor-listings";
 import { getCurrentProfile } from "@/server/services/profile";
 import Link from "next/link";
@@ -12,6 +13,11 @@ export default async function TutorHomePage() {
   const { application } = await getMyApplication();
   const isVerified = profile?.role === "tutor";
   const { listing } = isVerified ? await getMyListing() : { listing: null };
+  const { summary } = isVerified
+    ? await getTutorReviewSummary()
+    : {
+        summary: { ratingAvg: null, reviewCount: 0, recent: [] },
+      };
 
   const statusText = isVerified
     ? listing?.published
@@ -42,6 +48,57 @@ export default async function TutorHomePage() {
           )
         }
       />
+
+      {isVerified ? (
+        <section className="mb-6 surface-card p-5 sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="eyebrow text-[var(--color-accent)]">Parent feedback</p>
+              <h2 className="display-title mt-1 text-xl text-[var(--color-primary)]">
+                Reviews on your listing
+              </h2>
+            </div>
+            {listing?.published ? (
+              <Link
+                href={`/browse/${listing.id}`}
+                className="btn-panel btn-panel-secondary"
+              >
+                View public profile
+              </Link>
+            ) : null}
+          </div>
+          <div className="mt-4 flex flex-wrap items-end gap-6">
+            <div>
+              <p className="display-title text-3xl text-[var(--color-primary)]">
+                {summary.ratingAvg != null ? summary.ratingAvg.toFixed(1) : "—"}
+              </p>
+              <p className="text-sm text-[var(--color-on-surface-muted)]">
+                {summary.reviewCount > 0
+                  ? `${summary.reviewCount} review${summary.reviewCount === 1 ? "" : "s"}`
+                  : "No reviews yet"}
+              </p>
+            </div>
+          </div>
+          {summary.recent.length > 0 ? (
+            <ul className="mt-4 space-y-3 border-t border-[var(--color-outline)] pt-4">
+              {summary.recent.map((review) => (
+                <li key={review.id} className="text-sm">
+                  <p className="font-semibold text-[var(--color-on-surface)]">
+                    {review.author_display} · {review.rating}/5
+                  </p>
+                  <p className="mt-1 text-[var(--color-on-surface-muted)]">
+                    {review.body}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-3 text-sm text-[var(--color-on-surface-muted)]">
+              Reviews appear after parents complete paid lessons.
+            </p>
+          )}
+        </section>
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Link

@@ -14,6 +14,7 @@ export const COLLECTIONS = {
   recurringBookings: "recurring_bookings",
   scheduledLessons: "scheduled_lessons",
   attendanceRecords: "attendance_records",
+  lessonReviews: "lesson_reviews",
   payoutRequests: "payout_requests",
   messageThreads: "message_threads",
   progressNotes: "progress_notes",

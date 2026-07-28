@@ -80,6 +80,16 @@ export function AccountListingCard({ listing }: Props) {
           </div>
           <div>
             <dt className="text-xs font-semibold uppercase tracking-wide text-[var(--color-on-surface-muted)]">
+              Reviews
+            </dt>
+            <dd className="mt-0.5 font-semibold text-[var(--color-on-surface)]">
+              {listing.review_count && listing.rating_avg != null
+                ? `${listing.rating_avg.toFixed(1)}★ · ${listing.review_count}`
+                : "None yet"}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold uppercase tracking-wide text-[var(--color-on-surface-muted)]">
               Languages
             </dt>
             <dd className="mt-0.5 font-semibold text-[var(--color-on-surface)]">

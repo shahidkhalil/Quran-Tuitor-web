@@ -160,5 +160,14 @@ service cloud.firestore {
       );
       allow create, update, delete: if false;
     }
+
+    match /lesson_reviews/{id} {
+      allow read: if signedIn() && (
+        resource.data.parent_id == request.auth.uid
+        || resource.data.tutor_id == request.auth.uid
+        || isAdmin()
+      );
+      allow create, update, delete: if false;
+    }
   }
 }

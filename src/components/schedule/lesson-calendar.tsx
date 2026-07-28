@@ -37,6 +37,8 @@ type Props = {
   showTutorNoShowHelp?: boolean;
   /** Tutor: show progress note form after completed lessons */
   enableProgressNotes?: boolean;
+  /** Parent: lesson IDs that already have a review */
+  reviewedLessonIds?: string[];
 };
 
 function statusTone(status: ScheduledLesson["status"]) {
@@ -63,6 +65,7 @@ function LessonDetailCard({
   enableMarkAttendance,
   showTutorNoShowHelp,
   enableProgressNotes,
+  reviewedLessonIds,
 }: {
   lesson: CalendarLessonItem;
   helpHref: string;
@@ -70,6 +73,7 @@ function LessonDetailCard({
   enableMarkAttendance: boolean;
   showTutorNoShowHelp: boolean;
   enableProgressNotes: boolean;
+  reviewedLessonIds: string[];
 }) {
   const hasJoin =
     Boolean(lesson.meeting_url) && lesson.status === "scheduled";
@@ -83,6 +87,7 @@ function LessonDetailCard({
     enableProgressNotes &&
     lesson.status === "completed" &&
     Boolean(lesson.progress_note_id);
+  const alreadyReviewed = reviewedLessonIds.includes(lesson.id);
 
   return (
     <article className="surface-card p-5 md:p-6">
@@ -178,6 +183,15 @@ function LessonDetailCard({
               ? "View progress notes"
               : "Open learner progress"}
           </Link>
+          {alreadyReviewed ? (
+            <span className="status-pill status-pill-success self-center">
+              Reviewed
+            </span>
+          ) : (
+            <a href="#lesson-reviews" className="btn-panel btn-panel-secondary">
+              Leave a review
+            </a>
+          )}
         </div>
       ) : null}
 
@@ -205,6 +219,7 @@ export function LessonCalendar({
   enableMarkAttendance = false,
   showTutorNoShowHelp = false,
   enableProgressNotes = false,
+  reviewedLessonIds = [],
 }: Props) {
   const todayIso = toLocalIsoDate(new Date());
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
@@ -406,6 +421,7 @@ export function LessonCalendar({
                 enableMarkAttendance={enableMarkAttendance}
                 showTutorNoShowHelp={showTutorNoShowHelp}
                 enableProgressNotes={enableProgressNotes}
+                reviewedLessonIds={reviewedLessonIds}
               />
             ))}
           </div>
