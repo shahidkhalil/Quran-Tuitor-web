@@ -8,6 +8,7 @@ import {
   IconInbox,
   IconList,
   IconSearch,
+  IconShield,
   IconUser,
   IconUsers,
 } from "@/components/shell/panel-icons";
@@ -22,7 +23,7 @@ type Props = {
   notificationBell?: ReactNode;
 };
 
-/** Market-standard parent IA: home → find → family → lessons → inbox → profile */
+/** Market-standard parent IA: home → find → family → lessons → inbox → support → profile */
 const nav = [
   { href: "/parent", label: "Home", exact: true, icon: <IconHome /> },
   { href: "/browse", label: "Browse", icon: <IconSearch /> },
@@ -30,6 +31,7 @@ const nav = [
   { href: "/parent/bookings", label: "Bookings", icon: <IconCalendar /> },
   { href: "/parent/schedule", label: "Schedule", icon: <IconList /> },
   { href: "/parent/messages", label: "Messages", icon: <IconInbox /> },
+  { href: "/parent/support", label: "Support", icon: <IconShield /> },
   { href: "/parent/account", label: "Account", icon: <IconUser /> },
 ] as const;
 

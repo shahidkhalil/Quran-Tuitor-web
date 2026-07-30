@@ -1,5 +1,7 @@
 import { PanelPageHeader } from "@/components/shell/panel-page-header";
 import { statusLabel } from "@/domain/tutor-applications";
+import { enforcementStatusLabel } from "@/domain/tutor-enforcement";
+import { getTutorEnforcement } from "@/server/actions/admin-enforcement";
 import { getMyApplication } from "@/server/actions/tutor-applications";
 import { getTutorReviewSummary } from "@/server/actions/reviews";
 import { getMyListing } from "@/server/actions/tutor-listings";
@@ -18,6 +20,9 @@ export default async function TutorHomePage() {
     : {
         summary: { ratingAvg: null, reviewCount: 0, recent: [] },
       };
+  const enforcement = profile
+    ? await getTutorEnforcement(profile.id)
+    : null;
 
   const statusText = isVerified
     ? listing?.published
@@ -48,6 +53,25 @@ export default async function TutorHomePage() {
           )
         }
       />
+
+      {enforcement &&
+      enforcement.enforcement_status !== "clear" ? (
+        <div
+          role="status"
+          className="mb-6 rounded-[var(--radius-lg)] border border-[var(--color-warning)]/30 bg-[var(--color-warning)]/5 px-4 py-3 text-sm"
+        >
+          <p className="font-semibold text-[var(--color-on-surface)]">
+            Account status:{" "}
+            {enforcementStatusLabel(enforcement.enforcement_status)}
+          </p>
+          <p className="mt-1 text-[var(--color-on-surface-muted)]">
+            {enforcement.enforcement_status === "warned"
+              ? "You received a policy warning. Continue teaching carefully — contact Support in-platform if you need help."
+              : enforcement.enforcement_public_message ||
+                "New bookings and publishing are restricted until the platform reinstates your account."}
+          </p>
+        </div>
+      ) : null}
 
       {isVerified ? (
         <section className="mb-6 surface-card p-5 sm:p-6">

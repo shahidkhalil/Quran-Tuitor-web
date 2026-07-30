@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import type { PlatformPayment } from "@/domain/payments";
 import type { ScheduledLesson } from "@/domain/recurring-bookings";
 import {
@@ -85,7 +86,8 @@ async function refreshListingReviews(listingId: string) {
     .get();
 
   const reviews = reviewSnap.docs
-    .map((d) => d.data() as LessonReview)
+    .map((d) => ({ ...(d.data() as LessonReview), id: d.id }))
+    .filter((r) => !r.hidden_at)
     .sort((a, b) => b.created_at.localeCompare(a.created_at));
 
   const reviewCount = reviews.length;
@@ -212,6 +214,9 @@ export async function submitLessonReview(
     rating,
     body,
     author_display: `${learnerName}'s parent`,
+    hidden_at: null,
+    hidden_by: null,
+    hidden_reason: null,
     created_at: stamp,
     updated_at: stamp,
   };
@@ -256,6 +261,9 @@ export async function updateLessonReview(
     return {
       error: "The 24-hour edit window for this review has ended.",
     };
+  }
+  if (review.hidden_at) {
+    return { error: "This review was removed by moderation and cannot be edited." };
   }
 
   const stamp = nowIso();
@@ -442,4 +450,161 @@ export async function getTutorReviewSummary(): Promise<{
   } catch {
     return { summary: empty, error: "Could not load reviews." };
   }
+}
+
+async function requireAdmin() {
+  if (!isAuthConfigured()) {
+    return { ok: false as const, error: "Firebase is not configured." };
+  }
+  const profile = await getCurrentProfile();
+  if (!profile || profile.role !== "admin") {
+    return { ok: false as const, error: "Admin only." };
+  }
+  return { ok: true as const, profile };
+}
+
+export type AdminReviewRow = LessonReview & {
+  listingHeadline: string | null;
+};
+
+export type HideReviewState = {
+  error?: string;
+  fieldErrors?: { reason?: string };
+};
+
+export async function listReviewsForAdminModeration(): Promise<{
+  reviews: AdminReviewRow[];
+  error?: string;
+}> {
+  const ctx = await requireAdmin();
+  if (!ctx.ok) return { reviews: [], error: ctx.error };
+
+  try {
+    const snap = await db().collection(COLLECTIONS.lessonReviews).get();
+    const raw = snap.docs
+      .map((d) => ({ ...(d.data() as LessonReview), id: d.id }))
+      .sort((a, b) => b.created_at.localeCompare(a.created_at));
+
+    const reviews: AdminReviewRow[] = await Promise.all(
+      raw.map(async (r) => {
+        const listingSnap = await db()
+          .collection(COLLECTIONS.tutorListings)
+          .doc(r.listing_id)
+          .get();
+        return {
+          ...r,
+          listingHeadline:
+            (listingSnap.data()?.headline as string | undefined) ?? null,
+        };
+      }),
+    );
+    return { reviews };
+  } catch {
+    return { reviews: [], error: "Could not load reviews." };
+  }
+}
+
+export async function adminHideLessonReview(
+  _prev: HideReviewState,
+  formData: FormData,
+): Promise<HideReviewState> {
+  const ctx = await requireAdmin();
+  if (!ctx.ok) return { error: ctx.error };
+
+  const reviewId = String(formData.get("reviewId") ?? "").trim();
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (!reviewId) return { error: "Missing review." };
+  if (reason.length < 5) {
+    return {
+      fieldErrors: { reason: "Add a short moderation reason (min 5 characters)." },
+    };
+  }
+
+  const ref = db().collection(COLLECTIONS.lessonReviews).doc(reviewId);
+  const snap = await ref.get();
+  if (!snap.exists) return { error: "Review not found." };
+  const before = { ...(snap.data() as LessonReview), id: snap.id };
+  if (before.hidden_at) {
+    return { error: "This review is already hidden." };
+  }
+
+  const stamp = nowIso();
+  try {
+    await ref.set(
+      {
+        hidden_at: stamp,
+        hidden_by: ctx.profile.id,
+        hidden_reason: reason,
+        updated_at: stamp,
+      },
+      { merge: true },
+    );
+    await refreshListingReviews(before.listing_id);
+    await db().collection(COLLECTIONS.auditLog).add({
+      id: db().collection(COLLECTIONS.auditLog).doc().id,
+      actor_id: ctx.profile.id,
+      action: "review_hide",
+      entity_type: "lesson_review",
+      entity_id: reviewId,
+      before_state: {
+        hidden_at: before.hidden_at,
+        rating: before.rating,
+        listing_id: before.listing_id,
+      },
+      after_state: {
+        hidden_at: stamp,
+        hidden_reason: reason,
+        listing_id: before.listing_id,
+      },
+      created_at: stamp,
+    });
+  } catch {
+    return { error: "Could not hide review." };
+  }
+
+  revalidatePath("/admin/reviews");
+  revalidatePath("/browse");
+  revalidatePath(`/browse/${before.listing_id}`);
+  revalidatePath("/tutor");
+  redirect(`/admin/reviews?hidden=1`);
+}
+
+export async function adminUnhideLessonReview(formData: FormData) {
+  const ctx = await requireAdmin();
+  if (!ctx.ok) redirect("/sign-in?next=/admin/reviews");
+
+  const reviewId = String(formData.get("reviewId") ?? "").trim();
+  if (!reviewId) redirect("/admin/reviews");
+
+  const ref = db().collection(COLLECTIONS.lessonReviews).doc(reviewId);
+  const snap = await ref.get();
+  if (!snap.exists) redirect("/admin/reviews?error=missing");
+  const before = { ...(snap.data() as LessonReview), id: snap.id };
+
+  const stamp = nowIso();
+  await ref.set(
+    {
+      hidden_at: null,
+      hidden_by: null,
+      hidden_reason: null,
+      updated_at: stamp,
+    },
+    { merge: true },
+  );
+  await refreshListingReviews(before.listing_id);
+  await db().collection(COLLECTIONS.auditLog).add({
+    id: db().collection(COLLECTIONS.auditLog).doc().id,
+    actor_id: ctx.profile.id,
+    action: "review_unhide",
+    entity_type: "lesson_review",
+    entity_id: reviewId,
+    before_state: { hidden_at: before.hidden_at, listing_id: before.listing_id },
+    after_state: { hidden_at: null, listing_id: before.listing_id },
+    created_at: stamp,
+  });
+
+  revalidatePath("/admin/reviews");
+  revalidatePath("/browse");
+  revalidatePath(`/browse/${before.listing_id}`);
+  redirect("/admin/reviews?restored=1");
 }

@@ -98,10 +98,18 @@ export default async function TutorEarningsPage({ searchParams }: Props) {
             Payout failed — support
           </p>
           <p className="mt-1 text-[var(--color-on-surface-muted)]">
-            Full support cases land in a later update. For now, retry after
-            checking your Connect account, or contact the platform admin with
-            your payout id from the history below.
+            Open a Support Case and attach a related paid lesson. We handle
+            payout failures in-platform — include the payout id from history
+            below in your description.
           </p>
+          <div className="mt-3">
+            <Link
+              href="/tutor/support/new?help=payout-failed&category=payment"
+              className="btn-panel btn-panel-primary"
+            >
+              Open support case
+            </Link>
+          </div>
         </div>
       ) : null}
 

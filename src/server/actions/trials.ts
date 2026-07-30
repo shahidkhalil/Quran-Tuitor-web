@@ -18,6 +18,7 @@ import { isAuthConfigured } from "@/lib/firebase/server-auth";
 import { creditTrialStipend } from "@/server/actions/ledger";
 import { createInAppNotification } from "@/server/actions/notifications";
 import { ensureThreadOnRelationship } from "@/server/actions/messages";
+import { assertTutorCanAcceptNewBookings } from "@/server/actions/admin-enforcement";
 import { getPublishedListingById } from "@/server/actions/tutor-listings";
 import { getCurrentProfile } from "@/server/services/profile";
 import type { LearnerProfile } from "@/domain/learners";
@@ -132,6 +133,11 @@ export async function bookTrialLesson(
   const { listing } = await getPublishedListingById(listingId);
   if (!listing) {
     return { error: "That tutor listing is not available." };
+  }
+
+  const bookingGate = await assertTutorCanAcceptNewBookings(listing.tutor_id);
+  if (!bookingGate.ok) {
+    return { error: bookingGate.error };
   }
 
   const learnerSnap = await db()
@@ -329,6 +335,11 @@ export async function acceptTrialRequest(formData: FormData) {
   [booking] = await expireTimedOutTrials([booking]);
   if (booking.status !== "pending_tutor") {
     redirect("/tutor/requests?error=closed");
+  }
+
+  const gate = await assertTutorCanAcceptNewBookings(ctx.profile.id);
+  if (!gate.ok) {
+    redirect(`/tutor/requests?error=${encodeURIComponent(gate.error)}`);
   }
 
   const stamp = nowIso();

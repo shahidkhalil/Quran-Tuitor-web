@@ -9,9 +9,19 @@ export type LessonReview = {
   rating: number;
   body: string;
   author_display: string;
+  /** Soft-hide from public listing (admin moderation). */
+  hidden_at: string | null;
+  hidden_by: string | null;
+  hidden_reason: string | null;
   created_at: string;
   updated_at: string;
 };
+
+export function isReviewPublic(
+  review: Pick<LessonReview, "hidden_at">,
+): boolean {
+  return !review.hidden_at;
+}
 
 export const REVIEW_MIN_RATING = 1;
 export const REVIEW_MAX_RATING = 5;

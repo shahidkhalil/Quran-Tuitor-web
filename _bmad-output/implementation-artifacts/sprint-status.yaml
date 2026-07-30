@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-19 19:11:18 UTC
-last_updated: 2026-07-28 05:00:00 UTC
+last_updated: 2026-07-30 12:10:00 UTC
 project: Quran-Tuitor-web
 project_key: NOKEY
 tracking_system: file-system
@@ -81,12 +81,12 @@ development_status:
   epic-6: in-progress
   6-1-parent-visible-thread: done
   6-2-progress-notes-after-lessons: review
-  6-3-ratings-and-reviews-on-listings: in-progress
+  6-3-ratings-and-reviews-on-listings: review
   epic-6-retrospective: optional
-  epic-7: backlog
-  7-1-open-support-case-from-a-booking: backlog
-  7-2-admin-case-queue-and-resolution: backlog
-  7-3-free-rematch: backlog
-  7-4-tutor-quality-enforcement: backlog
-  7-5-admin-operations-console-bookings-listings-commission: backlog
+  epic-7: in-progress
+  7-1-open-support-case-from-a-booking: review
+  7-2-admin-case-queue-and-resolution: review
+  7-3-free-rematch: review
+  7-4-tutor-quality-enforcement: review
+  7-5-admin-operations-console-bookings-listings-commission: review
   epic-7-retrospective: optional

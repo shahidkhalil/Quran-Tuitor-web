@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import {
   paidLessonEarningsUniqueKey,
-  resolveCommissionBps,
   splitLessonGross,
   trialStipendUniqueKey,
   type LedgerEntry,
@@ -16,6 +15,7 @@ import {
 } from "@/domain/trials";
 import { COLLECTIONS, db, docId, nowIso } from "@/lib/firebase/db";
 import { isAuthConfigured } from "@/lib/firebase/server-auth";
+import { getActiveCommissionBps } from "@/server/actions/admin-ops";
 import { getCurrentProfile } from "@/server/services/profile";
 
 /**
@@ -89,7 +89,7 @@ export async function creditPaidLessonEarnings(input: {
     return { credited: false, netCents: 0, error: "Invalid lesson rate." };
   }
 
-  const split = splitLessonGross(gross, resolveCommissionBps());
+  const split = splitLessonGross(gross, await getActiveCommissionBps());
   if (split.net_cents <= 0) {
     return { credited: false, netCents: 0 };
   }

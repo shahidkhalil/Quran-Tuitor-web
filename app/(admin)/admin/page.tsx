@@ -1,7 +1,8 @@
-import { PanelPageHeader } from "@/components/shell/panel-page-header";
-import { statusLabel } from "@/domain/tutor-applications";
-import { listPendingApplicationsForAdmin } from "@/server/actions/tutor-applications";
 import Link from "next/link";
+import { PanelPageHeader } from "@/components/shell/panel-page-header";
+import { getAdminOpsSummary } from "@/server/actions/admin-ops";
+import { listPendingApplicationsForAdmin } from "@/server/actions/tutor-applications";
+import { statusLabel } from "@/domain/tutor-applications";
 
 export const metadata = { title: "Admin" };
 
@@ -9,21 +10,62 @@ type Props = {
   searchParams: Promise<{ decided?: string }>;
 };
 
+const opsLinks = [
+  {
+    href: "/admin",
+    title: "Vetting queue",
+    body: "Approve, reject, or request info on applications",
+  },
+  {
+    href: "/admin/cases",
+    title: "Support cases",
+    body: "Resolve disputes and run free rematch",
+  },
+  {
+    href: "/admin/tutors",
+    title: "Tutors / suspensions",
+    body: "Warn, suspend, or unlist for policy breaches",
+  },
+  {
+    href: "/admin/reviews",
+    title: "Review moderation",
+    body: "Hide abusive reviews from public listings",
+  },
+  {
+    href: "/admin/bookings",
+    title: "Bookings",
+    body: "Overview of trials and paid lessons",
+  },
+  {
+    href: "/admin/listings",
+    title: "Listings",
+    body: "All published and draft tutor listings",
+  },
+  {
+    href: "/admin/ledger",
+    title: "Ledger & payouts",
+    body: "Adjustments and payout resolutions",
+  },
+  {
+    href: "/admin/settings",
+    title: "Commission settings",
+    body: "Platform take rate (audited)",
+  },
+] as const;
+
 export default async function AdminHomePage({ searchParams }: Props) {
   const { decided } = await searchParams;
-  const { applications, error } = await listPendingApplicationsForAdmin();
+  const [{ applications, error }, summary] = await Promise.all([
+    listPendingApplicationsForAdmin(),
+    getAdminOpsSummary(),
+  ]);
 
   return (
     <>
       <PanelPageHeader
         eyebrow="Operations"
-        title="Vetting queue"
-        description="Review pending tutor applications. Approve, reject, or request more information."
-        actions={
-          <span className="status-pill status-pill-warning">
-            {applications.length} pending
-          </span>
-        }
+        title="Admin console"
+        description="Managed marketplace day-to-day: vetting, bookings, listings, cases, suspensions, and commission."
       />
 
       {decided ? (
@@ -31,6 +73,37 @@ export default async function AdminHomePage({ searchParams }: Props) {
           Decision saved. Applicant has been notified.
         </p>
       ) : null}
+
+      <div className="mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Pending apps" value={summary.pendingApplications} />
+        <StatCard label="Open cases" value={summary.openCases} />
+        <StatCard label="Published listings" value={summary.publishedListings} />
+        <StatCard label="Upcoming lessons" value={summary.upcomingLessons} />
+      </div>
+
+      <div className="mb-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {opsLinks.map((link) => (
+          <Link
+            key={link.href + link.title}
+            href={link.href}
+            className="surface-card-interactive block p-5"
+          >
+            <p className="font-semibold text-[var(--color-primary)]">{link.title}</p>
+            <p className="mt-1 text-sm text-[var(--color-on-surface-muted)]">
+              {link.body}
+            </p>
+          </Link>
+        ))}
+      </div>
+
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="display-title text-xl text-[var(--color-primary)]">
+          Vetting queue
+        </h2>
+        <span className="status-pill status-pill-warning">
+          {applications.length} pending
+        </span>
+      </div>
 
       {error ? (
         <p
@@ -74,20 +147,17 @@ export default async function AdminHomePage({ searchParams }: Props) {
                     </span>
                     {app.languages}
                   </p>
-                  <p className="mt-2 line-clamp-2 text-sm text-[var(--color-on-surface)] md:hidden">
-                    {app.credentials_summary}
-                  </p>
                 </div>
                 <p className="text-sm text-[var(--color-on-surface-muted)]">
-                  {app.country}
+                  {app.country || "—"}
                 </p>
                 <p className="text-sm text-[var(--color-on-surface-muted)]">
-                  {new Date(app.submitted_at).toLocaleString()}
+                  {new Date(app.submitted_at || app.created_at).toLocaleDateString()}
                 </p>
                 <div className="md:text-right">
                   <Link
                     href={`/admin/vetting/${app.id}`}
-                    className="btn-panel btn-panel-primary !min-h-10"
+                    className="btn-panel btn-panel-secondary !min-h-9 !px-3 text-[11px]"
                   >
                     Review
                   </Link>
@@ -98,5 +168,18 @@ export default async function AdminHomePage({ searchParams }: Props) {
         </div>
       )}
     </>
+  );
+}
+
+function StatCard({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="surface-card px-4 py-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.06em] text-[var(--color-on-surface-muted)]">
+        {label}
+      </p>
+      <p className="display-title mt-1 text-2xl text-[var(--color-primary)]">
+        {value}
+      </p>
+    </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MarkAttendanceForm } from "@/components/schedule/mark-attendance-form";
 import { ProgressNoteForm } from "@/components/progress/progress-note-form";
 import {
@@ -11,13 +11,17 @@ import {
 } from "@/domain/attendance";
 import { canSubmitProgressNote } from "@/domain/progress-notes";
 import {
+  CALENDAR_FILTERS,
+  CALENDAR_FILTER_LABELS,
   WEEKDAY_HEADERS,
   addMonths,
   buildMonthGrid,
   lessonLocalIsoDate,
+  lessonMatchesCalendarFilter,
   monthTitle,
   startOfMonth,
   toLocalIsoDate,
+  type CalendarFilter,
 } from "@/domain/calendar";
 import { formatLessonSlot } from "@/domain/recurring-bookings";
 import type { ScheduledLesson } from "@/domain/recurring-bookings";
@@ -172,7 +176,6 @@ function LessonDetailCard({
         </p>
       ) : null}
 
-      {/* Parent: always offer Progress for completed lessons */}
       {!enableProgressNotes && lesson.status === "completed" ? (
         <div className="mt-4 flex flex-wrap gap-2">
           <Link
@@ -210,6 +213,52 @@ function LessonDetailCard({
   );
 }
 
+function chipLabel(lesson: CalendarLessonItem) {
+  const time = new Date(lesson.slot_start).toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  const name = lesson.partyLabel.trim();
+  const short = name.length > 10 ? `${name.slice(0, 9)}…` : name;
+  return short ? `${time} · ${short}` : time;
+}
+
+function pickFocusDay(
+  matches: CalendarLessonItem[],
+  filter: CalendarFilter,
+  now: Date,
+): string | null {
+  if (matches.length === 0) return null;
+  const todayIso = toLocalIsoDate(now);
+  const sorted = [...matches].sort(
+    (a, b) =>
+      new Date(a.slot_start).getTime() - new Date(b.slot_start).getTime(),
+  );
+
+  if (filter === "today" || filter === "ongoing") {
+    const onToday = sorted.find(
+      (l) => lessonLocalIsoDate(l.slot_start) === todayIso,
+    );
+    if (onToday) return lessonLocalIsoDate(onToday.slot_start);
+  }
+
+  if (filter === "upcoming" || filter === "all") {
+    const upcoming = sorted.find(
+      (l) =>
+        l.status === "scheduled" &&
+        new Date(l.slot_start).getTime() >= now.getTime(),
+    );
+    if (upcoming) return lessonLocalIsoDate(upcoming.slot_start);
+  }
+
+  return lessonLocalIsoDate(sorted[0]!.slot_start);
+}
+
+function isoToMonth(iso: string): Date {
+  const [y, m, d] = iso.split("-").map(Number);
+  return startOfMonth(new Date(y!, (m ?? 1) - 1, d ?? 1));
+}
+
 export function LessonCalendar({
   lessons,
   emptyTitle = "No lessons on the calendar",
@@ -221,20 +270,41 @@ export function LessonCalendar({
   enableProgressNotes = false,
   reviewedLessonIds = [],
 }: Props) {
-  const todayIso = toLocalIsoDate(new Date());
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  const now = useMemo(() => new Date(nowMs), [nowMs]);
+
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
+  const [filter, setFilter] = useState<CalendarFilter>("all");
   const [selectedIso, setSelectedIso] = useState(() => {
-    const upcoming = lessons.find(
-      (l) =>
-        l.status === "scheduled" &&
-        new Date(l.slot_end).getTime() >= Date.now() - 60 * 60 * 1000,
-    );
-    return upcoming ? lessonLocalIsoDate(upcoming.slot_start) : todayIso;
+    const focus = pickFocusDay(lessons, "all", new Date());
+    return focus ?? toLocalIsoDate(new Date());
   });
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNowMs(Date.now()), 15_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const filteredLessons = useMemo(
+    () => lessons.filter((l) => lessonMatchesCalendarFilter(l, filter, now)),
+    [lessons, filter, now],
+  );
+
+  const filterCounts = useMemo(() => {
+    const counts = {} as Record<CalendarFilter, number>;
+    for (const key of CALENDAR_FILTERS) {
+      counts[key] =
+        key === "all"
+          ? lessons.length
+          : lessons.filter((l) => lessonMatchesCalendarFilter(l, key, now))
+              .length;
+    }
+    return counts;
+  }, [lessons, now]);
 
   const byDate = useMemo(() => {
     const map = new Map<string, CalendarLessonItem[]>();
-    for (const lesson of lessons) {
+    for (const lesson of filteredLessons) {
       const key = lessonLocalIsoDate(lesson.slot_start);
       const list = map.get(key) ?? [];
       list.push(lesson);
@@ -247,10 +317,32 @@ export function LessonCalendar({
       );
     }
     return map;
+  }, [filteredLessons]);
+
+  const busiestDayIso = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const lesson of lessons) {
+      const key = lessonLocalIsoDate(lesson.slot_start);
+      map.set(key, (map.get(key) ?? 0) + 1);
+    }
+    let best: string | null = null;
+    let bestCount = 0;
+    for (const [iso, count] of map) {
+      if (count > bestCount) {
+        best = iso;
+        bestCount = count;
+      }
+    }
+    return best;
   }, [lessons]);
 
-  const grid = useMemo(() => buildMonthGrid(month), [month]);
+  const grid = useMemo(() => buildMonthGrid(month, now), [month, now]);
   const selectedLessons = byDate.get(selectedIso) ?? [];
+
+  const panelLessons =
+    selectedLessons.length > 0 ? selectedLessons : filteredLessons;
+  const showingAllMatches =
+    selectedLessons.length === 0 && filteredLessons.length > 0;
 
   const selectedLabel = useMemo(() => {
     const [y, m, d] = selectedIso.split("-").map(Number);
@@ -261,6 +353,30 @@ export function LessonCalendar({
       day: "numeric",
     });
   }, [selectedIso]);
+
+  function applyFilter(next: CalendarFilter) {
+    setFilter(next);
+    const matches = lessons.filter((l) =>
+      lessonMatchesCalendarFilter(l, next, new Date()),
+    );
+    const focus = pickFocusDay(matches, next, new Date());
+    if (!focus) return;
+    setSelectedIso(focus);
+    setMonth(isoToMonth(focus));
+  }
+
+  function jumpToLessonDay(lesson: CalendarLessonItem) {
+    const iso = lessonLocalIsoDate(lesson.slot_start);
+    setSelectedIso(iso);
+    setMonth(isoToMonth(iso));
+  }
+
+  function goToBusiestDay() {
+    if (!busiestDayIso) return;
+    setFilter("all");
+    setSelectedIso(busiestDayIso);
+    setMonth(isoToMonth(busiestDayIso));
+  }
 
   if (lessons.length === 0) {
     return (
@@ -277,156 +393,287 @@ export function LessonCalendar({
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.9fr)] lg:items-start">
-      <section className="surface-card overflow-hidden">
-        <div className="flex items-center justify-between gap-3 border-b border-[var(--color-outline)] px-4 py-3 sm:px-5">
-          <button
-            type="button"
-            className="btn-panel btn-panel-secondary !min-h-9 !px-3"
-            onClick={() => setMonth((m) => addMonths(m, -1))}
-            aria-label="Previous month"
-          >
-            ←
-          </button>
-          <div className="text-center">
-            <p className="eyebrow text-[var(--color-accent)]">Month</p>
-            <h2 className="display-title text-xl text-[var(--color-primary)] sm:text-2xl">
-              {monthTitle(month)}
-            </h2>
-          </div>
-          <button
-            type="button"
-            className="btn-panel btn-panel-secondary !min-h-9 !px-3"
-            onClick={() => setMonth((m) => addMonths(m, 1))}
-            aria-label="Next month"
-          >
-            →
-          </button>
-        </div>
-
-        <div className="grid grid-cols-7 gap-px bg-[var(--color-outline)] border-b border-[var(--color-outline)]">
-          {WEEKDAY_HEADERS.map((d) => (
-            <div
-              key={d}
-              className="bg-[var(--color-surface-muted)] px-1 py-2 text-center text-[10px] font-bold tracking-[0.06em] text-[var(--color-on-surface-muted)] sm:text-[11px]"
+    <div className="space-y-4">
+      <div
+        className="flex gap-2 overflow-x-auto pb-1"
+        role="tablist"
+        aria-label="Calendar filters"
+      >
+        {CALENDAR_FILTERS.map((key) => {
+          const active = filter === key;
+          const count = filterCounts[key];
+          return (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => applyFilter(key)}
+              className={[
+                "shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition",
+                active
+                  ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
+                  : "border-[var(--color-outline)] bg-[var(--color-surface-elevated)] text-[var(--color-on-surface)] hover:border-[var(--color-primary)]/40",
+              ].join(" ")}
             >
-              {d}
-            </div>
-          ))}
-        </div>
-
-        <div
-          className="grid grid-cols-7 gap-px bg-[var(--color-outline)]"
-          role="grid"
-          aria-label={`Calendar ${monthTitle(month)}`}
-        >
-          {grid.map((day) => {
-            const dayLessons = byDate.get(day.isoDate) ?? [];
-            const selected = day.isoDate === selectedIso;
-            return (
-              <button
-                key={day.isoDate}
-                type="button"
-                role="gridcell"
-                onClick={() => setSelectedIso(day.isoDate)}
+              {CALENDAR_FILTER_LABELS[key]}
+              <span
                 className={[
-                  "relative flex min-h-[4.25rem] flex-col items-stretch bg-[var(--color-surface-elevated)] p-1.5 text-left transition sm:min-h-[5.25rem] sm:p-2",
-                  day.inMonth ? "" : "opacity-40",
-                  selected
-                    ? "ring-2 ring-inset ring-[var(--color-primary)]"
-                    : "hover:bg-[var(--color-surface-muted)]",
-                  day.isToday ? "bg-[var(--color-accent-soft)]/35" : "",
+                  "ml-1.5 tabular-nums",
+                  active
+                    ? "text-white/80"
+                    : "text-[var(--color-on-surface-muted)]",
                 ].join(" ")}
               >
-                <span
-                  className={[
-                    "inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold",
-                    day.isToday
-                      ? "bg-[var(--color-primary)] text-white"
-                      : "text-[var(--color-on-surface)]",
-                  ].join(" ")}
-                >
-                  {day.date.getDate()}
-                </span>
-                <div className="mt-1 flex flex-1 flex-col gap-0.5">
-                  {dayLessons.slice(0, 2).map((lesson) => (
-                    <span
-                      key={lesson.id}
-                      className={[
-                        "truncate rounded px-1 py-0.5 text-[9px] font-semibold text-white sm:text-[10px]",
-                        statusTone(lesson.status),
-                      ].join(" ")}
-                    >
-                      {new Date(lesson.slot_start).toLocaleTimeString(undefined, {
-                        hour: "numeric",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                  ))}
-                  {dayLessons.length > 2 ? (
-                    <span className="text-[9px] font-semibold text-[var(--color-on-surface-muted)]">
-                      +{dayLessons.length - 2} more
-                    </span>
-                  ) : null}
-                </div>
-              </button>
-            );
-          })}
-        </div>
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
 
-        <div className="flex flex-wrap gap-3 border-t border-[var(--color-outline)] px-4 py-3 text-[11px] text-[var(--color-on-surface-muted)] sm:px-5">
-          <span className="inline-flex items-center gap-1.5">
-            <span className="size-2 rounded-full bg-[var(--color-primary)]" /> Scheduled
+      <div className="flex flex-wrap items-center gap-2 text-sm text-[var(--color-on-surface-muted)]">
+        {filter === "today" ? (
+          <span>
+            Today = lessons on{" "}
+            <strong className="text-[var(--color-on-surface)]">
+              {now.toLocaleDateString(undefined, {
+                weekday: "long",
+                month: "long",
+                day: "numeric",
+              })}
+            </strong>{" "}
+            only.
           </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="size-2 rounded-full bg-[var(--color-success)]" /> Completed
+        ) : filter === "ongoing" ? (
+          <span>
+            Ongoing = in the live 45‑minute window now (updates every 15s).
           </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="size-2 rounded-full bg-[var(--color-warning)]" /> Student no-show
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="size-2 rounded-full bg-[var(--color-error)]" /> Tutor no-show
-          </span>
-        </div>
-      </section>
-
-      <section className="space-y-4">
-        <div>
-          <p className="eyebrow text-[var(--color-accent)]">Selected day</p>
-          <h3 className="display-title mt-1 text-xl text-[var(--color-primary)]">
-            {selectedLabel}
-          </h3>
-          <p className="mt-1 text-sm text-[var(--color-on-surface-muted)]">
-            {selectedLessons.length === 0
-              ? "No lessons on this day — pick a highlighted date."
-              : `${selectedLessons.length} lesson${selectedLessons.length === 1 ? "" : "s"}`}
-          </p>
-        </div>
-
-        {selectedLessons.length === 0 ? (
-          <div className="surface-card px-5 py-10 text-center">
-            <p className="text-sm text-[var(--color-on-surface-muted)]">
-              Select a day with a colored time chip to see join links and
-              details.
-            </p>
-          </div>
         ) : (
-          <div className="space-y-3">
-            {selectedLessons.map((lesson) => (
-              <LessonDetailCard
-                key={lesson.id}
-                lesson={lesson}
-                helpHref={helpHref}
-                helpLabel={helpLabel}
-                enableMarkAttendance={enableMarkAttendance}
-                showTutorNoShowHelp={showTutorNoShowHelp}
-                enableProgressNotes={enableProgressNotes}
-                reviewedLessonIds={reviewedLessonIds}
-              />
+          <span>
+            Tip: use{" "}
+            <strong className="text-[var(--color-on-surface)]">All</strong>, then
+            open a day with chips
+            {busiestDayIso ? (
+              <>
+                {" "}
+                (
+                <button
+                  type="button"
+                  onClick={goToBusiestDay}
+                  className="font-semibold text-[var(--color-primary)] underline-offset-2 hover:underline"
+                >
+                  busiest day
+                </button>
+                )
+              </>
+            ) : null}
+            .
+          </span>
+        )}
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.9fr)] lg:items-start">
+        <section className="surface-card overflow-hidden">
+          <div className="flex items-center justify-between gap-3 border-b border-[var(--color-outline)] px-4 py-3 sm:px-5">
+            <button
+              type="button"
+              className="btn-panel btn-panel-secondary !min-h-9 !px-3"
+              onClick={() => setMonth((m) => addMonths(m, -1))}
+              aria-label="Previous month"
+            >
+              ←
+            </button>
+            <div className="text-center">
+              <p className="eyebrow text-[var(--color-accent)]">Month</p>
+              <h2 className="display-title text-xl text-[var(--color-primary)] sm:text-2xl">
+                {monthTitle(month)}
+              </h2>
+            </div>
+            <button
+              type="button"
+              className="btn-panel btn-panel-secondary !min-h-9 !px-3"
+              onClick={() => setMonth((m) => addMonths(m, 1))}
+              aria-label="Next month"
+            >
+              →
+            </button>
+          </div>
+
+          <div className="grid grid-cols-7 gap-px bg-[var(--color-outline)] border-b border-[var(--color-outline)]">
+            {WEEKDAY_HEADERS.map((d) => (
+              <div
+                key={d}
+                className="bg-[var(--color-surface-muted)] px-1 py-2 text-center text-[10px] font-bold tracking-[0.06em] text-[var(--color-on-surface-muted)] sm:text-[11px]"
+              >
+                {d}
+              </div>
             ))}
           </div>
-        )}
-      </section>
+
+          <div
+            className="grid grid-cols-7 gap-px bg-[var(--color-outline)]"
+            role="grid"
+            aria-label={`Calendar ${monthTitle(month)}`}
+          >
+            {grid.map((day) => {
+              const dayLessons = byDate.get(day.isoDate) ?? [];
+              const selected = day.isoDate === selectedIso;
+              return (
+                <button
+                  key={day.isoDate}
+                  type="button"
+                  role="gridcell"
+                  onClick={() => setSelectedIso(day.isoDate)}
+                  className={[
+                    "relative flex min-h-[4.25rem] flex-col items-stretch bg-[var(--color-surface-elevated)] p-1.5 text-left transition sm:min-h-[5.25rem] sm:p-2",
+                    day.inMonth ? "" : "opacity-40",
+                    selected
+                      ? "ring-2 ring-inset ring-[var(--color-primary)]"
+                      : "hover:bg-[var(--color-surface-muted)]",
+                    day.isToday ? "bg-[var(--color-accent-soft)]/35" : "",
+                  ].join(" ")}
+                >
+                  <span
+                    className={[
+                      "inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold",
+                      day.isToday
+                        ? "bg-[var(--color-primary)] text-white"
+                        : "text-[var(--color-on-surface)]",
+                    ].join(" ")}
+                  >
+                    {day.date.getDate()}
+                  </span>
+                  <div className="mt-1 flex flex-1 flex-col gap-0.5 overflow-hidden">
+                    {dayLessons.slice(0, 3).map((lesson) => (
+                      <span
+                        key={lesson.id}
+                        className={[
+                          "truncate rounded px-1 py-0.5 text-[9px] font-semibold text-white sm:text-[10px]",
+                          statusTone(lesson.status),
+                        ].join(" ")}
+                      >
+                        {chipLabel(lesson)}
+                      </span>
+                    ))}
+                    {dayLessons.length > 3 ? (
+                      <span className="text-[9px] font-bold text-[var(--color-primary)]">
+                        +{dayLessons.length - 3} more ({dayLessons.length}{" "}
+                        total)
+                      </span>
+                    ) : dayLessons.length > 0 ? (
+                      <span className="text-[9px] font-semibold text-[var(--color-on-surface-muted)]">
+                        {dayLessons.length} lesson
+                        {dayLessons.length === 1 ? "" : "s"}
+                      </span>
+                    ) : null}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex flex-wrap gap-3 border-t border-[var(--color-outline)] px-4 py-3 text-[11px] text-[var(--color-on-surface-muted)] sm:px-5">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="size-2 rounded-full bg-[var(--color-primary)]" />{" "}
+              Scheduled
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="size-2 rounded-full bg-[var(--color-success)]" />{" "}
+              Completed
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="size-2 rounded-full bg-[var(--color-warning)]" />{" "}
+              Student no-show
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="size-2 rounded-full bg-[var(--color-error)]" />{" "}
+              Tutor no-show
+            </span>
+          </div>
+        </section>
+
+        <section className="space-y-4">
+          <div>
+            <p className="eyebrow text-[var(--color-accent)]">
+              {showingAllMatches ? "Matching results" : "Selected day"}
+            </p>
+            <h3 className="display-title mt-1 text-xl text-[var(--color-primary)]">
+              {showingAllMatches
+                ? CALENDAR_FILTER_LABELS[filter]
+                : selectedLabel}
+            </h3>
+            <p className="mt-1 text-sm text-[var(--color-on-surface-muted)]">
+              {panelLessons.length === 0
+                ? `No ${CALENDAR_FILTER_LABELS[filter].toLowerCase()} lessons right now.`
+                : showingAllMatches
+                  ? `${panelLessons.length} match${panelLessons.length === 1 ? "" : "es"} listed below.`
+                  : `${panelLessons.length} ${CALENDAR_FILTER_LABELS[filter].toLowerCase()} lesson${panelLessons.length === 1 ? "" : "s"}`}
+            </p>
+          </div>
+
+          {panelLessons.length === 0 ? (
+            <div className="surface-card px-5 py-10 text-center">
+              <p className="text-sm text-[var(--color-on-surface-muted)]">
+                {filter === "all"
+                  ? "Select a day with a colored time chip to see join links and details."
+                  : "Nothing in this filter right now."}
+              </p>
+              <div className="mt-4 flex flex-wrap justify-center gap-2">
+                {filter !== "all" ? (
+                  <button
+                    type="button"
+                    className="btn-panel btn-panel-primary"
+                    onClick={() => applyFilter("all")}
+                  >
+                    Show all lessons
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className="btn-panel btn-panel-secondary"
+                  onClick={goToBusiestDay}
+                >
+                  Jump to busiest day
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="max-h-[min(70vh,52rem)] space-y-3 overflow-y-auto pr-1">
+              {panelLessons.map((lesson) => (
+                <div key={lesson.id}>
+                  {showingAllMatches ? (
+                    <button
+                      type="button"
+                      onClick={() => jumpToLessonDay(lesson)}
+                      className="mb-2 text-left text-xs font-semibold text-[var(--color-primary)] underline-offset-2 hover:underline"
+                    >
+                      Jump to{" "}
+                      {new Date(lesson.slot_start).toLocaleDateString(
+                        undefined,
+                        {
+                          weekday: "short",
+                          month: "short",
+                          day: "numeric",
+                        },
+                      )}
+                    </button>
+                  ) : null}
+                  <LessonDetailCard
+                    lesson={lesson}
+                    helpHref={helpHref}
+                    helpLabel={helpLabel}
+                    enableMarkAttendance={enableMarkAttendance}
+                    showTutorNoShowHelp={showTutorNoShowHelp}
+                    enableProgressNotes={enableProgressNotes}
+                    reviewedLessonIds={reviewedLessonIds}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
     </div>
   );
 }

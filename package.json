@@ -3,10 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node --max-http-header-size=65536 ./node_modules/next/dist/bin/next dev",
     "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+    "start": "node --max-http-header-size=65536 ./node_modules/next/dist/bin/next start",
+    "lint": "eslint",
+    "promote-admin": "npx tsx --env-file=.env.local scripts/promote-admin.ts"
   },
   "dependencies": {
     "cloudinary": "^2.10.0",

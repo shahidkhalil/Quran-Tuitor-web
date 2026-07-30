@@ -169,5 +169,36 @@ service cloud.firestore {
       );
       allow create, update, delete: if false;
     }
+
+    match /support_cases/{id} {
+      allow read: if signedIn() && (
+        resource.data.reporter_id == request.auth.uid
+        || resource.data.parent_id == request.auth.uid
+        || resource.data.tutor_id == request.auth.uid
+        || isAdmin()
+      );
+      // Creates/updates go through Admin SDK server actions only.
+      allow create, update, delete: if false;
+    }
+
+    match /rematches/{id} {
+      allow read: if isAdmin()
+        || (signedIn() && (
+          resource.data.parent_id == request.auth.uid
+          || resource.data.from_tutor_id == request.auth.uid
+          || resource.data.to_tutor_id == request.auth.uid
+        ));
+      allow create, update, delete: if false;
+    }
+
+    match /tutor_enforcement_events/{id} {
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    match /platform_config/{id} {
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
+    }
   }
 }

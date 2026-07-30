@@ -2,7 +2,14 @@
 
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { UserAvatar } from "@/components/profile/user-avatar";
-import { IconShield, IconUsers, IconWallet } from "@/components/shell/panel-icons";
+import {
+  IconCalendar,
+  IconInbox,
+  IconList,
+  IconShield,
+  IconUsers,
+  IconWallet,
+} from "@/components/shell/panel-icons";
 import { PanelNavLink } from "@/components/shell/panel-nav-link";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -34,16 +41,52 @@ export function AdminShell({ children, email, photoUrl }: Props) {
         <nav aria-label="Admin" className="flex flex-1 flex-col gap-1 p-3">
           <PanelNavLink
             href="/admin"
-            label="Vetting queue"
+            label="Home"
             exact
             variant="side-light"
             icon={<IconShield />}
+          />
+          <PanelNavLink
+            href="/admin/cases"
+            label="Support cases"
+            variant="side-light"
+            icon={<IconInbox />}
+          />
+          <PanelNavLink
+            href="/admin/bookings"
+            label="Bookings"
+            variant="side-light"
+            icon={<IconCalendar />}
+          />
+          <PanelNavLink
+            href="/admin/listings"
+            label="Listings"
+            variant="side-light"
+            icon={<IconList />}
+          />
+          <PanelNavLink
+            href="/admin/tutors"
+            label="Tutors"
+            variant="side-light"
+            icon={<IconUsers />}
+          />
+          <PanelNavLink
+            href="/admin/reviews"
+            label="Reviews"
+            variant="side-light"
+            icon={<IconInbox />}
           />
           <PanelNavLink
             href="/admin/ledger"
             label="Ledger"
             variant="side-light"
             icon={<IconWallet />}
+          />
+          <PanelNavLink
+            href="/admin/settings"
+            label="Settings"
+            variant="side-light"
+            icon={<IconShield />}
           />
           <PanelNavLink
             href="/admin/account"
@@ -74,13 +117,18 @@ export function AdminShell({ children, email, photoUrl }: Props) {
                 Ops
               </span>
               <p className="hidden text-sm text-[var(--color-on-surface-muted)] sm:block">
-                Tutor vetting &amp; marketplace trust
+                Managed marketplace operations
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              <PanelNavLink href="/admin" label="Queue" exact />
+            <div className="flex flex-wrap items-center gap-2">
+              <PanelNavLink href="/admin" label="Home" exact />
+              <PanelNavLink href="/admin/cases" label="Cases" />
+              <PanelNavLink href="/admin/bookings" label="Bookings" />
+              <PanelNavLink href="/admin/listings" label="Listings" />
+              <PanelNavLink href="/admin/tutors" label="Tutors" />
+              <PanelNavLink href="/admin/reviews" label="Reviews" />
               <PanelNavLink href="/admin/ledger" label="Ledger" />
-              <PanelNavLink href="/admin/account" label="Account" />
+              <PanelNavLink href="/admin/settings" label="Settings" />
               <SignOutButton className="lg:hidden" />
             </div>
           </div>

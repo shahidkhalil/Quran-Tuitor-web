@@ -8,6 +8,7 @@ import {
   IconHome,
   IconInbox,
   IconList,
+  IconShield,
   IconUsers,
   IconWallet,
 } from "@/components/shell/panel-icons";
@@ -36,6 +37,7 @@ const tutorNav = [
   { href: "/tutor/messages", label: "Messages", icon: <IconInbox /> },
   { href: "/tutor/listing", label: "Listing", icon: <IconList /> },
   { href: "/tutor/earnings", label: "Earnings", icon: <IconWallet /> },
+  { href: "/tutor/support", label: "Support", icon: <IconShield /> },
   { href: "/tutor/application", label: "Application", icon: <IconFile /> },
   { href: "/tutor/account", label: "Account", icon: <IconUsers /> },
 ] as const;

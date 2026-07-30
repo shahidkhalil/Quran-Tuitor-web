@@ -39,6 +39,12 @@ const quickLinks = [
     body: "Parent-visible threads with tutors",
     icon: "M",
   },
+  {
+    href: "/parent/support",
+    title: "Support",
+    body: "Cases from trials or paid lessons",
+    icon: "?",
+  },
 ] as const;
 
 export default async function ParentAccountPage() {

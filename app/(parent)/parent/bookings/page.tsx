@@ -80,14 +80,20 @@ export default async function ParentBookingsPage({ searchParams }: Props) {
             Tutor no-show — rematch support
           </p>
           <p className="mt-1 text-[var(--color-on-surface-muted)]">
-            A paid lesson was marked as tutor no-show. Review attendance on your
-            schedule, or browse another verified tutor.
+            A paid lesson was marked as tutor no-show. Open a Support Case so we
+            can help in-platform — you never need to chase the tutor off-site.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
+            <Link
+              href="/parent/support/new?help=tutor-no-show&category=no_show"
+              className="btn-panel btn-panel-primary"
+            >
+              Open support case
+            </Link>
             <Link href="/parent/schedule" className="btn-panel btn-panel-secondary">
               Review schedule
             </Link>
-            <Link href="/browse" className="btn-panel btn-panel-primary">
+            <Link href="/browse" className="btn-panel btn-panel-secondary">
               Find another tutor
             </Link>
           </div>
@@ -200,6 +206,12 @@ export default async function ParentBookingsPage({ searchParams }: Props) {
                         Book another tutor
                       </Link>
                     )}
+                    <Link
+                      href={`/parent/support/new?bookingKind=trial&bookingId=${booking.id}`}
+                      className="btn-panel btn-panel-secondary mt-4"
+                    >
+                      Get support
+                    </Link>
                   </div>
                   <Link
                     href={`/browse/${booking.listing_id}`}

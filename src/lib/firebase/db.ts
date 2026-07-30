@@ -19,6 +19,10 @@ export const COLLECTIONS = {
   messageThreads: "message_threads",
   progressNotes: "progress_notes",
   notifications: "notifications",
+  supportCases: "support_cases",
+  rematches: "rematches",
+  tutorEnforcementEvents: "tutor_enforcement_events",
+  platformConfig: "platform_config",
   auditLog: "audit_log",
 } as const;
 

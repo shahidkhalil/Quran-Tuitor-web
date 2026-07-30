@@ -10,6 +10,13 @@ import {
 import { isAuthConfigured } from "@/lib/firebase/server-auth";
 import { getCurrentProfile } from "@/server/services/profile";
 import {
+  canTutorAcceptNewBookings,
+} from "@/domain/tutor-enforcement";
+import {
+  assertTutorCanAcceptNewBookings,
+  getTutorEnforcement,
+} from "@/server/actions/admin-enforcement";
+import {
   COMMON_TIMEZONES,
   LISTING_AGE_BANDS,
   LISTING_CURRENCY,
@@ -104,10 +111,10 @@ export async function listPublishedListings(): Promise<{
       .where("published", "==", true)
       .orderBy("published_at", "desc")
       .get();
+    const raw = snap.docs.map((d) => normalizeListing(d.data() as TutorListing));
+    const gated = await filterBookableListings(raw);
     return {
-      listings: await enrichListingsWithProfilePhotos(
-        snap.docs.map((d) => normalizeListing(d.data() as TutorListing)),
-      ),
+      listings: await enrichListingsWithProfilePhotos(gated),
     };
   } catch {
     try {
@@ -115,15 +122,27 @@ export async function listPublishedListings(): Promise<{
         .collection(COLLECTIONS.tutorListings)
         .where("published", "==", true)
         .get();
+      const raw = snap.docs.map((d) => normalizeListing(d.data() as TutorListing));
+      const gated = await filterBookableListings(raw);
       return {
-        listings: await enrichListingsWithProfilePhotos(
-          snap.docs.map((d) => normalizeListing(d.data() as TutorListing)),
-        ),
+        listings: await enrichListingsWithProfilePhotos(gated),
       };
     } catch {
       return { listings: [], error: "Could not load listings." };
     }
   }
+}
+
+async function filterBookableListings(
+  listings: TutorListing[],
+): Promise<TutorListing[]> {
+  const checks = await Promise.all(
+    listings.map(async (l) => {
+      const enf = await getTutorEnforcement(l.tutor_id);
+      return canTutorAcceptNewBookings(enf.enforcement_status) ? l : null;
+    }),
+  );
+  return checks.filter((l): l is TutorListing => l != null);
 }
 
 async function enrichListingsWithProfilePhotos(
@@ -167,6 +186,10 @@ export async function getPublishedListingById(
     if (!snap.exists) return { listing: null };
     const listing = normalizeListing(snap.data() as TutorListing);
     if (!listing.published) return { listing: null };
+    const enf = await getTutorEnforcement(listing.tutor_id);
+    if (!canTutorAcceptNewBookings(enf.enforcement_status)) {
+      return { listing: null };
+    }
     if (!listing.photo_url) {
       const [enriched] = await enrichListingsWithProfilePhotos([listing]);
       return { listing: enriched ?? listing };
@@ -474,6 +497,15 @@ export async function publishListing(
 ): Promise<ListingFormState> {
   const ctx = await requireVerifiedTutor();
   if (!ctx.ok) return { error: ctx.error };
+
+  const gate = await assertTutorCanAcceptNewBookings(ctx.profile.id);
+  if (!gate.ok) {
+    return {
+      error:
+        gate.error ||
+        "Your account cannot publish while suspended or unlisted.",
+    };
+  }
 
   const parsed = parseListingInput(formData);
   if (Object.keys(parsed.fieldErrors).length > 0) {

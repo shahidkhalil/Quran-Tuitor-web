@@ -14,6 +14,7 @@ import { COLLECTIONS, db, docId, nowIso } from "@/lib/firebase/db";
 import { isAuthConfigured } from "@/lib/firebase/server-auth";
 import { getAppOrigin, getStripe, isStripeConfigured } from "@/lib/stripe";
 import { getPublishedListingById } from "@/server/actions/tutor-listings";
+import { assertTutorCanAcceptNewBookings } from "@/server/actions/admin-enforcement";
 import { fulfillPaidCheckoutSession } from "@/server/services/payments";
 import { getCurrentProfile } from "@/server/services/profile";
 
@@ -144,6 +145,11 @@ export async function startCheckoutFromTrial(
   }
 
   const trial = checkout.trial;
+  const bookingGate = await assertTutorCanAcceptNewBookings(trial.tutor_id);
+  if (!bookingGate.ok) {
+    return { error: bookingGate.error };
+  }
+
   const stamp = nowIso();
   const paymentId = docId();
   const rateCents = Math.round(checkout.rateUsd * 100);

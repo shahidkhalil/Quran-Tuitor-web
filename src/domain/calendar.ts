@@ -53,3 +53,63 @@ export function lessonLocalIsoDate(slotStartIso: string): string {
 }
 
 export const WEEKDAY_HEADERS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+
+export const CALENDAR_FILTERS = [
+  "all",
+  "upcoming",
+  "today",
+  "ongoing",
+  "completed",
+  "no_show",
+  "cancelled",
+] as const;
+
+export type CalendarFilter = (typeof CALENDAR_FILTERS)[number];
+
+export const CALENDAR_FILTER_LABELS: Record<CalendarFilter, string> = {
+  all: "All",
+  upcoming: "Upcoming",
+  today: "Today",
+  ongoing: "Ongoing",
+  completed: "Completed",
+  no_show: "No-show",
+  cancelled: "Cancelled",
+};
+
+type FilterableLesson = {
+  status: string;
+  slot_start: string;
+  slot_end: string;
+};
+
+export function lessonMatchesCalendarFilter(
+  lesson: FilterableLesson,
+  filter: CalendarFilter,
+  now = new Date(),
+): boolean {
+  if (filter === "all") return true;
+
+  const start = new Date(lesson.slot_start).getTime();
+  const end = new Date(lesson.slot_end).getTime();
+  const t = now.getTime();
+  if (Number.isNaN(start) || Number.isNaN(end)) return false;
+
+  switch (filter) {
+    case "upcoming":
+      return lesson.status === "scheduled" && start > t;
+    case "today":
+      return lessonLocalIsoDate(lesson.slot_start) === toLocalIsoDate(now);
+    case "ongoing":
+      return lesson.status === "scheduled" && start <= t && t < end;
+    case "completed":
+      return lesson.status === "completed";
+    case "no_show":
+      return (
+        lesson.status === "tutor_no_show" || lesson.status === "student_no_show"
+      );
+    case "cancelled":
+      return lesson.status === "cancelled";
+    default:
+      return true;
+  }
+}
