@@ -3,7 +3,10 @@ import { ShortlistToggle } from "@/components/listings/shortlist-toggle";
 import {
   formatLessonRate,
   genderLabel,
+  hasListingIntroAudio,
+  hasListingIntroVideo,
   subjectLabel,
+  timezoneLabel,
   type TutorListing,
 } from "@/domain/tutor-listings";
 
@@ -91,6 +94,15 @@ export function ShortlistCompare({ listings, shortlistedIds }: Props) {
             <CompareRow label="Languages" listings={listings}>
               {(l) => l.languages || "—"}
             </CompareRow>
+            <CompareRow label="Timezone" listings={listings}>
+              {(l) => (l.timezone ? timezoneLabel(l.timezone) : "—")}
+            </CompareRow>
+            <CompareRow label="Intro video" listings={listings}>
+              {(l) => (hasListingIntroVideo(l) ? "Yes" : "—")}
+            </CompareRow>
+            <CompareRow label="Voice sample" listings={listings}>
+              {(l) => (hasListingIntroAudio(l) ? "Yes" : "—")}
+            </CompareRow>
             <CompareRow label="Rating" listings={listings}>
               {(l) =>
                 l.rating_avg != null
@@ -172,6 +184,14 @@ function CompareCard({
             Languages
           </dt>
           <dd>{listing.languages}</dd>
+        </div>
+        <div>
+          <dt className="text-xs text-[var(--color-on-surface-muted)]">
+            Timezone
+          </dt>
+          <dd>
+            {listing.timezone ? timezoneLabel(listing.timezone) : "—"}
+          </dd>
         </div>
         <div>
           <dt className="text-xs text-[var(--color-on-surface-muted)]">

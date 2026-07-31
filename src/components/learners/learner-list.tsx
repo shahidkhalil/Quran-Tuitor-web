@@ -67,6 +67,12 @@ export function LearnerList({ learners }: Props) {
                 Progress notes
               </Link>
               <Link
+                href={`/parent/hifz/${learner.id}`}
+                className="btn-panel btn-panel-secondary"
+              >
+                Hifz tracker
+              </Link>
+              <Link
                 href={`/parent/learners/${learner.id}/edit`}
                 className="btn-panel btn-panel-secondary"
               >

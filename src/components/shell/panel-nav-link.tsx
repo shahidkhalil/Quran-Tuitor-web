@@ -11,6 +11,8 @@ type Props = {
   exact?: boolean;
   icon?: ReactNode;
   variant?: "top" | "side" | "side-light";
+  /** Optional count badge (e.g. message threads) — additive only */
+  badge?: number;
 };
 
 export function PanelNavLink({
@@ -19,11 +21,19 @@ export function PanelNavLink({
   exact = false,
   icon,
   variant = "top",
+  badge,
 }: Props) {
   const pathname = usePathname();
   const active = exact
     ? pathname === href
     : pathname === href || pathname.startsWith(`${href}/`);
+
+  const badgeEl =
+    badge != null && badge > 0 ? (
+      <span className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-[var(--color-accent)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--color-on-accent)]">
+        {badge > 9 ? "9+" : badge}
+      </span>
+    ) : null;
 
   if (variant === "side") {
     return (
@@ -37,7 +47,8 @@ export function PanelNavLink({
         )}
       >
         {icon ? <span className="opacity-90">{icon}</span> : null}
-        {label}
+        <span className="flex-1">{label}</span>
+        {badgeEl}
       </Link>
     );
   }
@@ -54,7 +65,19 @@ export function PanelNavLink({
         )}
       >
         {icon ? <span className="opacity-90">{icon}</span> : null}
-        {label}
+        <span className="flex-1">{label}</span>
+        {badge != null && badge > 0 ? (
+          <span
+            className={cn(
+              "inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold",
+              active
+                ? "bg-white/20 text-white"
+                : "bg-[var(--color-accent)] text-[var(--color-on-accent)]",
+            )}
+          >
+            {badge > 9 ? "9+" : badge}
+          </span>
+        ) : null}
       </Link>
     );
   }
@@ -63,13 +86,25 @@ export function PanelNavLink({
     <Link
       href={href}
       className={cn(
-        "rounded-full px-3.5 py-2 text-sm font-semibold transition",
+        "inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-semibold transition",
         active
           ? "bg-[var(--color-primary)] text-[var(--color-on-primary)] shadow-[var(--shadow-sm)]"
           : "text-[var(--color-on-surface-muted)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-primary)]",
       )}
     >
       {label}
+      {badge != null && badge > 0 ? (
+        <span
+          className={cn(
+            "inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold",
+            active
+              ? "bg-white/20 text-white"
+              : "bg-[var(--color-accent)] text-[var(--color-on-accent)]",
+          )}
+        >
+          {badge > 9 ? "9+" : badge}
+        </span>
+      ) : null}
     </Link>
   );
 }

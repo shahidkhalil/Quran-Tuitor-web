@@ -73,6 +73,31 @@ export default async function TutorListingPage({ searchParams }: Props) {
           Listing published. Parents can discover you on Browse tutors.
         </p>
       ) : null}
+      {listing?.published && !listing.intro_video_url?.trim() ? (
+        <p
+          role="status"
+          className="mb-4 rounded-[var(--radius-lg)] border border-[var(--color-outline)] bg-[var(--color-surface-elevated)] px-4 py-3 text-sm text-[var(--color-on-surface-muted)]"
+        >
+          Tip: add a YouTube intro video below — parents see an{" "}
+          <span className="font-semibold text-[var(--color-primary)]">
+            Intro video
+          </span>{" "}
+          badge on Browse and can watch before booking a free trial.
+        </p>
+      ) : null}
+      {listing?.published && !listing.intro_audio_url?.trim() ? (
+        <p
+          role="status"
+          className="mb-4 rounded-[var(--radius-lg)] border border-[var(--color-outline)] bg-[var(--color-surface-elevated)] px-4 py-3 text-sm text-[var(--color-on-surface-muted)]"
+        >
+          Tip: add an intro voice sample — upload a short recitation or paste an
+          HTTPS audio URL. Parents see a{" "}
+          <span className="font-semibold text-[var(--color-primary)]">
+            Voice sample
+          </span>{" "}
+          badge and can listen on your profile.
+        </p>
+      ) : null}
       {unpublished ? (
         <p
           role="status"

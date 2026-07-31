@@ -7,6 +7,7 @@ import {
 } from "@/domain/attendance";
 import { formatLessonSlot } from "@/domain/recurring-bookings";
 import type { ScheduledLesson } from "@/domain/recurring-bookings";
+import { joinViaSystemCheck } from "@/domain/system-check";
 
 type Props = {
   lessons: ScheduledLesson[];
@@ -20,6 +21,7 @@ type Props = {
   enableMarkAttendance?: boolean;
   /** Show rematch help when tutor_no_show. */
   showTutorNoShowHelp?: boolean;
+  joinRole?: "parent" | "tutor";
 };
 
 function statusPillClass(status: ScheduledLesson["status"]) {
@@ -40,6 +42,7 @@ export function UpcomingLessons({
   helpLabel = "View bookings for help",
   enableMarkAttendance = false,
   showTutorNoShowHelp = false,
+  joinRole = "parent",
 }: Props) {
   if (showSkeleton) {
     return (
@@ -98,15 +101,14 @@ export function UpcomingLessons({
                 {hasJoin && lesson.meeting_url ? (
                   <>
                     <a
-                      href={lesson.meeting_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      href={joinViaSystemCheck(lesson.meeting_url, joinRole)}
                       className="btn-panel btn-panel-primary mt-4"
                     >
                       Join lesson
                     </a>
                     <p className="mt-2 text-xs text-[var(--color-on-surface-muted)]">
-                      Opens in a new tab. If the link doesn&apos;t work,{" "}
+                      Opens a quick device check, then your lesson. If it
+                      doesn&apos;t work,{" "}
                       <Link
                         href={helpHref}
                         className="font-medium text-[var(--color-primary)] underline-offset-2 hover:underline"

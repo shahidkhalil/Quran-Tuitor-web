@@ -22,6 +22,7 @@ type Props = {
   email?: string | null;
   photoUrl?: string | null;
   notificationBell?: ReactNode;
+  messageCount?: number;
 };
 
 const applicantNav = [
@@ -48,6 +49,7 @@ export function TutorShell({
   email,
   photoUrl,
   notificationBell,
+  messageCount = 0,
 }: Props) {
   const nav = isVerified ? tutorNav : applicantNav;
 
@@ -80,6 +82,7 @@ export function TutorShell({
               exact={"exact" in item ? item.exact : false}
               icon={item.icon}
               variant="side"
+              badge={item.href === "/tutor/messages" ? messageCount : undefined}
             />
           ))}
         </nav>
@@ -134,6 +137,9 @@ export function TutorShell({
                 href={item.href}
                 label={item.label}
                 exact={"exact" in item ? item.exact : false}
+                badge={
+                  item.href === "/tutor/messages" ? messageCount : undefined
+                }
               />
             ))}
           </nav>

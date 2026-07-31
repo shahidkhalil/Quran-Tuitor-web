@@ -7,6 +7,7 @@ import {
   trialStatusLabel,
   type TrialBooking,
 } from "@/domain/trials";
+import { joinViaSystemCheck } from "@/domain/system-check";
 import {
   acceptTrialRequest,
   declineTrialRequest,
@@ -58,9 +59,7 @@ export function TutorTrialRequestCard({ booking, learnerName }: Props) {
           ) : null}
           {showJoin && booking.meeting_url ? (
             <a
-              href={booking.meeting_url}
-              target="_blank"
-              rel="noopener noreferrer"
+              href={joinViaSystemCheck(booking.meeting_url, "tutor")}
               className="btn-panel btn-panel-primary mt-1"
             >
               Join lesson

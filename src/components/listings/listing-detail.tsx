@@ -1,45 +1,20 @@
 import Link from "next/link";
 import { TrustStrip } from "@/components/listings/trust-strip";
 import { ShortlistToggle } from "@/components/listings/shortlist-toggle";
+import { ListingTrialAvailability } from "@/components/listings/listing-trial-availability";
+import { previewTrialSlots } from "@/domain/listing-trial-preview";
+import type { TrialSlotOption } from "@/domain/trials";
 import {
   ageBandLabel,
   formatLessonRate,
   genderLabel,
   listingDisplayName,
   listingInitials,
+  listingIntroVideoEmbedUrl,
   subjectLabel,
   timezoneLabel,
   type TutorListing,
 } from "@/domain/tutor-listings";
-
-type Props = {
-  listing: TutorListing;
-  shortlisted?: boolean;
-  /** When parent already has a trial/package with this tutor */
-  parentCta?: {
-    href: string;
-    label: string;
-    subtitle: string;
-    kind: "trial" | "paid" | "manage";
-  } | null;
-};
-
-function youtubeEmbedUrl(url: string): string | null {
-  try {
-    const u = new URL(url);
-    if (u.hostname.includes("youtu.be")) {
-      const id = u.pathname.replace("/", "");
-      return id ? `https://www.youtube-nocookie.com/embed/${id}` : null;
-    }
-    if (u.hostname.includes("youtube.com")) {
-      const id = u.searchParams.get("v");
-      return id ? `https://www.youtube-nocookie.com/embed/${id}` : null;
-    }
-  } catch {
-    return null;
-  }
-  return null;
-}
 
 function StarRow({ rating }: { rating: number }) {
   const full = Math.round(rating);
@@ -93,16 +68,30 @@ function TutorPhoto({ listing }: { listing: TutorListing }) {
   );
 }
 
+type Props = {
+  listing: TutorListing;
+  shortlisted?: boolean;
+  trialSlots?: TrialSlotOption[];
+  /** When parent already has a trial/package with this tutor */
+  parentCta?: {
+    href: string;
+    label: string;
+    subtitle: string;
+    kind: "trial" | "paid" | "manage";
+  } | null;
+};
+
 export function ListingDetail({
   listing,
   shortlisted = false,
   parentCta = null,
+  trialSlots = [],
 }: Props) {
   const reviews = listing.reviews ?? [];
   const ratingAvg = listing.rating_avg;
   const reviewCount = listing.review_count ?? reviews.length;
   const embed = listing.intro_video_url
-    ? youtubeEmbedUrl(listing.intro_video_url)
+    ? listingIntroVideoEmbedUrl(listing.intro_video_url)
     : null;
   const trialHref = `/browse/${listing.id}/trial`;
   const displayName = listingDisplayName(listing.headline);
@@ -116,6 +105,8 @@ export function ListingDetail({
       ? ""
       : "1st lesson free · no card required");
   const showFreeTrialBadge = !parentCta || parentCta.kind === "trial";
+  const showTrialSlotPreview = !parentCta || parentCta.kind === "trial";
+  const stickyPreview = previewTrialSlots(trialSlots, 3);
   const mobileRateHint =
     parentCta?.kind === "paid"
       ? "Continue to paid package"
@@ -406,6 +397,21 @@ export function ListingDetail({
               ) : null}
             </section>
 
+            {showTrialSlotPreview ? (
+              <ListingTrialAvailability
+                listingId={listing.id}
+                slots={trialSlots}
+                availabilitySummary=""
+                timezoneLabel={
+                  listing.timezone?.trim()
+                    ? timezoneLabel(listing.timezone)
+                    : null
+                }
+                bookable={showFreeTrialBadge}
+                trialHref={trialHref}
+              />
+            ) : null}
+
             <section className="space-y-2">
               <h2 className="display-title text-xl text-[var(--color-on-background)]">
                 Experience with children
@@ -441,6 +447,25 @@ export function ListingDetail({
                     Watch intro video
                   </a>
                 )}
+              </section>
+            ) : null}
+
+            {listing.intro_audio_url?.trim() ? (
+              <section className="space-y-3">
+                <h2 className="display-title text-xl text-[var(--color-on-background)]">
+                  {displayName}&apos;s voice
+                </h2>
+                <p className="text-sm text-[var(--color-on-surface-muted)]">
+                  Hear a short sample before you book a free trial.
+                </p>
+                <audio
+                  controls
+                  preload="metadata"
+                  src={listing.intro_audio_url.trim()}
+                  className="w-full max-w-lg"
+                >
+                  Your browser does not support audio playback.
+                </audio>
               </section>
             ) : null}
 
@@ -490,6 +515,25 @@ export function ListingDetail({
                     : "Platform checkout only")}
               </p>
               <TrustStrip className="text-xs text-[var(--color-on-surface-muted)]" />
+              {showTrialSlotPreview && stickyPreview.length > 0 ? (
+                <div>
+                  <p className="text-xs font-semibold tracking-[0.04em] text-[var(--color-on-surface-muted)]">
+                    Next free trial times
+                  </p>
+                  <ul className="mt-2 space-y-1.5">
+                    {stickyPreview.map((slot) => (
+                      <li key={slot.start}>
+                        <Link
+                          href={`/browse/${listing.id}/trial?slot=${encodeURIComponent(slot.start)}`}
+                          className="block rounded-[var(--radius-md)] border border-[var(--color-outline)] px-3 py-2 text-xs font-semibold text-[var(--color-primary)] transition hover:border-[var(--color-primary)]/40"
+                        >
+                          {slot.label}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
               <Link
                 href={primaryHref}
                 className="inline-flex min-h-12 w-full items-center justify-center rounded-full bg-[var(--color-primary)] px-5 text-xs font-semibold tracking-[0.04em] text-[var(--color-on-primary)] shadow-[var(--shadow-sm)] transition hover:bg-[var(--color-primary-hover)]"

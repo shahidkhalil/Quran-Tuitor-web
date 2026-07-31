@@ -14,10 +14,12 @@ export const metadata = { title: "Book free trial" };
 
 type Props = {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ slot?: string }>;
 };
 
-export default async function BookTrialPage({ params }: Props) {
+export default async function BookTrialPage({ params, searchParams }: Props) {
   const { id } = await params;
+  const { slot: initialSlotStart } = await searchParams;
   const { listing } = await getPublishedListingById(id);
   if (!listing) notFound();
 
@@ -81,6 +83,7 @@ export default async function BookTrialPage({ params }: Props) {
               availabilitySummary={availabilitySummary}
               learners={learners}
               slots={slots}
+              initialSlotStart={initialSlotStart}
             />
           </div>
         </div>

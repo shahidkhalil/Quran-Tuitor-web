@@ -94,6 +94,7 @@ export default async function TutorCalendarPage({ searchParams }: Props) {
         helpLabel="Open trial requests"
         enableMarkAttendance
         enableProgressNotes
+        joinRole="tutor"
       />
     </>
   );

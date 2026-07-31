@@ -7,6 +7,7 @@ import {
   trialStatusLabel,
   type TrialBooking,
 } from "@/domain/trials";
+import { joinViaSystemCheck } from "@/domain/system-check";
 import { listMyTrialBookings } from "@/server/actions/trials";
 import { getPublishedListingById } from "@/server/actions/tutor-listings";
 import { getCurrentProfile } from "@/server/services/profile";
@@ -170,9 +171,10 @@ export default async function ParentBookingsPage({ searchParams }: Props) {
                     ) : null}
                     {showJoin && booking.meeting_url ? (
                       <a
-                        href={booking.meeting_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        href={joinViaSystemCheck(
+                          booking.meeting_url,
+                          "parent",
+                        )}
                         className="btn-panel btn-panel-primary mt-4"
                       >
                         Join lesson

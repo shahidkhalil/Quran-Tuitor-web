@@ -19,6 +19,7 @@ type Props = {
   availabilitySummary: string;
   learners: LearnerProfile[];
   slots: TrialSlotOption[];
+  initialSlotStart?: string;
 };
 
 const initial: TrialFormState = {};
@@ -29,6 +30,7 @@ export function BookTrialForm({
   availabilitySummary,
   learners,
   slots,
+  initialSlotStart = "",
 }: Props) {
   const [state, action, pending] = useActionState(bookTrialLesson, initial);
   const trialPath = `/browse/${listingId}/trial`;
@@ -134,6 +136,7 @@ export function BookTrialForm({
         slots={slots}
         availabilitySummary={availabilitySummary}
         error={state.fieldErrors?.slotStart}
+        initialSlotStart={initialSlotStart}
       />
 
       <div className="space-y-3 border-t border-[var(--color-outline)] pt-6">

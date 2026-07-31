@@ -18,6 +18,8 @@ export const COLLECTIONS = {
   payoutRequests: "payout_requests",
   messageThreads: "message_threads",
   progressNotes: "progress_notes",
+  hifzTrackers: "hifz_trackers",
+  familyShares: "family_shares",
   notifications: "notifications",
   supportCases: "support_cases",
   rematches: "rematches",

@@ -7,6 +7,10 @@ import {
   normalizeProgressField,
   type ProgressNote,
 } from "@/domain/progress-notes";
+import {
+  parseHomeworkChecklistItems,
+  toggleDoneKeys,
+} from "@/domain/homework-checklist";
 import type { ScheduledLesson } from "@/domain/recurring-bookings";
 import { COLLECTIONS, db, docId, nowIso } from "@/lib/firebase/db";
 import { isAuthConfigured } from "@/lib/firebase/server-auth";
@@ -234,6 +238,7 @@ export async function adminCorrectProgressNote(
       covered: covered.value,
       improve: improve.value,
       homework: homework.value,
+      homework_done_keys: [],
       updated_at: stamp,
       admin_corrected_at: stamp,
       admin_corrected_by: profile.id,
@@ -261,4 +266,57 @@ export async function adminCorrectProgressNote(
   });
 
   return { ok: true };
+}
+
+/** Parent toggles a homework checklist line on Revision. */
+export async function toggleHomeworkChecklistItem(formData: FormData) {
+  const noteId = String(formData.get("noteId") ?? "").trim();
+  const itemKey = String(formData.get("itemKey") ?? "").trim();
+  const intent = String(formData.get("intent") ?? "").trim();
+  const returnTo = String(formData.get("returnTo") ?? "/parent/revision").trim();
+
+  const ctx = await requireParentLike();
+  if (!ctx.ok) {
+    if ("needsAuth" in ctx && ctx.needsAuth) {
+      redirect(`/sign-in?next=${encodeURIComponent(returnTo || "/parent/revision")}`);
+    }
+    redirect(returnTo || "/parent/revision");
+  }
+
+  if (!noteId || !itemKey || (intent !== "done" && intent !== "undone")) {
+    redirect(returnTo || "/parent/revision");
+  }
+
+  const ref = db().collection(COLLECTIONS.progressNotes).doc(noteId);
+  const snap = await ref.get();
+  if (!snap.exists) redirect(returnTo || "/parent/revision");
+
+  const note = { ...(snap.data() as ProgressNote), id: snap.id };
+  if (note.parent_id !== ctx.profile.id) {
+    redirect(returnTo || "/parent/revision");
+  }
+
+  const items = parseHomeworkChecklistItems(note.homework);
+  if (!items.some((i) => i.key === itemKey)) {
+    redirect(returnTo || "/parent/revision");
+  }
+
+  const homework_done_keys = toggleDoneKeys(
+    note.homework_done_keys,
+    itemKey,
+    intent === "done",
+  );
+
+  await ref.set(
+    {
+      homework_done_keys,
+      updated_at: nowIso(),
+    },
+    { merge: true },
+  );
+
+  revalidatePath("/parent/revision");
+  revalidatePath(`/parent/learners/${note.learner_id}/progress`);
+  revalidatePath("/parent/watch");
+  redirect(returnTo.startsWith("/parent") ? returnTo : "/parent/revision");
 }

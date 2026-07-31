@@ -21,6 +21,7 @@ type Props = {
   email?: string | null;
   photoUrl?: string | null;
   notificationBell?: ReactNode;
+  messageCount?: number;
 };
 
 /** Market-standard parent IA: home → find → family → lessons → inbox → support → profile */
@@ -40,6 +41,7 @@ export function ParentShell({
   email,
   photoUrl,
   notificationBell,
+  messageCount = 0,
 }: Props) {
   return (
     <div className="panel-canvas flex min-h-full flex-1">
@@ -70,6 +72,7 @@ export function ParentShell({
               exact={"exact" in item ? item.exact : false}
               icon={item.icon}
               variant="side"
+              badge={item.href === "/parent/messages" ? messageCount : undefined}
             />
           ))}
         </nav>
@@ -124,6 +127,9 @@ export function ParentShell({
                 href={item.href}
                 label={item.label}
                 exact={"exact" in item ? item.exact : false}
+                badge={
+                  item.href === "/parent/messages" ? messageCount : undefined
+                }
               />
             ))}
           </nav>

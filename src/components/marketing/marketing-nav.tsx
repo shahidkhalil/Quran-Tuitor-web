@@ -51,6 +51,18 @@ export async function MarketingNav({ variant = "light" }: Props) {
           <Link href="/browse" className={navLinkClass}>
             Browse tutors
           </Link>
+          <Link href="/courses" className={navLinkClass}>
+            Courses
+          </Link>
+          <Link href="/guides" className={navLinkClass}>
+            Guides
+          </Link>
+          <Link href="/blog" className={navLinkClass}>
+            Blog
+          </Link>
+          <Link href="/reviews" className={navLinkClass}>
+            Reviews
+          </Link>
           <Link href="/teach" className={navLinkClass}>
             Teach with us
           </Link>

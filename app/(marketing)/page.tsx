@@ -1,7 +1,55 @@
 import Link from "next/link";
 import { MarketingFooter } from "@/components/marketing/marketing-footer";
 import { MarketingNav } from "@/components/marketing/marketing-nav";
-import { SUBJECT_OPTIONS } from "@/domain/tutor-listings";
+import { COURSE_LANDINGS } from "@/domain/course-landings";
+import {
+  LISTING_GENDER_OPTIONS,
+  SUBJECT_OPTIONS,
+  genderLabel,
+} from "@/domain/tutor-listings";
+
+const QUICK_FIND_LINKS = [
+  {
+    href: "/browse?gender=female&sort=rating",
+    label: "Female tutors",
+    hint: "Sisters teaching online",
+  },
+  {
+    href: "/browse?gender=male&sort=rating",
+    label: "Male tutors",
+    hint: "Brothers teaching online",
+  },
+  {
+    href: "/browse?children=1&sort=rating",
+    label: "Tutors for kids",
+    hint: "Child teaching experience",
+  },
+  {
+    href: "/browse?subject=tajweed&sort=rating",
+    label: "Tajweed",
+    hint: "Pronunciation & rules",
+  },
+  {
+    href: "/browse?subject=hifz&sort=rating",
+    label: "Hifz",
+    hint: "Memorisation support",
+  },
+  {
+    href: "/browse?subject=arabic&sort=rating",
+    label: "Arabic",
+    hint: "Language with Qur’an",
+  },
+  {
+    href: "/browse?subject=quran_reading&sort=rating",
+    label: "Qur’an reading",
+    hint: "Beginner-friendly",
+  },
+  {
+    href: "/browse?gender=female&children=1&sort=rating",
+    label: "Female · kids",
+    hint: "Common family preference",
+  },
+] as const;
 
 export default function LandingPage() {
   return (
@@ -60,7 +108,21 @@ export default function LandingPage() {
             </form>
 
             <div className="reveal-up-delay-2 mt-5 flex flex-wrap gap-2">
-              {SUBJECT_OPTIONS.slice(0, 4).map((subject) => (
+              {COURSE_LANDINGS.slice(0, 5).map((course) => (
+                <Link
+                  key={course.slug}
+                  href={`/courses/${course.slug}`}
+                  className="rounded-full border border-white/25 bg-white/10 px-3.5 py-1.5 text-xs font-semibold text-white/90 backdrop-blur-sm transition hover:bg-white/20"
+                >
+                  {course.eyebrow}
+                </Link>
+              ))}
+              {SUBJECT_OPTIONS.filter(
+                (s) =>
+                  !["tajweed", "hifz", "arabic", "quran_reading"].includes(
+                    s.value,
+                  ),
+              ).map((subject) => (
                 <Link
                   key={subject.value}
                   href={`/browse?subject=${subject.value}`}
@@ -75,6 +137,71 @@ export default function LandingPage() {
       </div>
 
       <section className="section-pad bg-[var(--color-surface-elevated)]">
+        <div className="mx-auto max-w-[1160px] px-4 md:px-8">
+          <p className="eyebrow text-[var(--color-accent)]">Quick find</p>
+          <h2 className="display-title mt-2 text-3xl text-[var(--color-primary)] md:text-4xl">
+            Start with gender or subject
+          </h2>
+          <p className="mt-3 max-w-2xl text-sm text-[var(--color-on-surface-muted)]">
+            Jump straight into Browse with filters applied — then book a free
+            trial when you find a fit.
+          </p>
+          <ul className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {QUICK_FIND_LINKS.map((item) => (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  className="surface-card surface-card-interactive flex h-full flex-col p-5"
+                >
+                  <span className="font-[family-name:var(--font-fraunces)] text-lg font-medium text-[var(--color-primary)]">
+                    {item.label}
+                  </span>
+                  <span className="mt-1 text-sm text-[var(--color-on-surface-muted)]">
+                    {item.hint}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-6 text-sm text-[var(--color-on-surface-muted)]">
+            Prefer course pages?{" "}
+            <Link
+              href="/courses"
+              className="font-semibold text-[var(--color-primary)] underline-offset-2 hover:underline"
+            >
+              Browse courses
+            </Link>
+            {" · "}
+            <Link
+              href="/guides"
+              className="font-semibold text-[var(--color-primary)] underline-offset-2 hover:underline"
+            >
+              Parent guides
+            </Link>
+            {" · "}
+            <Link
+              href="/blog"
+              className="font-semibold text-[var(--color-primary)] underline-offset-2 hover:underline"
+            >
+              Blog
+            </Link>
+            {" · "}
+            {LISTING_GENDER_OPTIONS.map((g, i) => (
+              <span key={g.value}>
+                {i > 0 ? " · " : null}
+                <Link
+                  href={`/browse?gender=${g.value}&sort=rating`}
+                  className="font-semibold text-[var(--color-primary)] underline-offset-2 hover:underline"
+                >
+                  {genderLabel(g.value)} tutors
+                </Link>
+              </span>
+            ))}
+          </p>
+        </div>
+      </section>
+
+      <section className="section-pad">
         <div className="mx-auto max-w-[1160px] px-4 md:px-8">
           <p className="eyebrow text-[var(--color-accent)]">How it works</p>
           <h2 className="display-title mt-2 text-3xl text-[var(--color-primary)] md:text-4xl">
@@ -114,7 +241,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="section-pad">
+      <section className="section-pad bg-[var(--color-surface-elevated)]">
         <div className="mx-auto max-w-[1160px] px-4 md:px-8">
           <p className="eyebrow text-[var(--color-primary)]">Trust</p>
           <h2 className="display-title mt-2 max-w-xl text-3xl text-[var(--color-primary)] md:text-4xl">
@@ -141,6 +268,24 @@ export default function LandingPage() {
               className="inline-flex min-h-12 items-center rounded-full bg-[var(--color-primary)] px-7 text-xs font-semibold tracking-[0.04em] text-[var(--color-on-primary)] shadow-[var(--shadow-sm)] transition hover:bg-[var(--color-primary-hover)]"
             >
               Browse tutors
+            </Link>
+            <Link
+              href="/guides"
+              className="inline-flex min-h-12 items-center rounded-full border border-[var(--color-outline-strong)] bg-transparent px-7 text-xs font-semibold tracking-[0.04em] text-[var(--color-primary)] transition hover:bg-[var(--color-surface-muted)]"
+            >
+              Parent guides
+            </Link>
+            <Link
+              href="/blog"
+              className="inline-flex min-h-12 items-center rounded-full border border-[var(--color-outline-strong)] bg-transparent px-7 text-xs font-semibold tracking-[0.04em] text-[var(--color-primary)] transition hover:bg-[var(--color-surface-muted)]"
+            >
+              Blog
+            </Link>
+            <Link
+              href="/reviews"
+              className="inline-flex min-h-12 items-center rounded-full border border-[var(--color-outline-strong)] bg-transparent px-7 text-xs font-semibold tracking-[0.04em] text-[var(--color-primary)] transition hover:bg-[var(--color-surface-muted)]"
+            >
+              Read reviews
             </Link>
             <Link
               href="/teach"

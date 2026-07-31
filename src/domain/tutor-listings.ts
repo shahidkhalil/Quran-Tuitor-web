@@ -59,6 +59,8 @@ export type TutorListing = {
   /** Public profile photo (HTTPS). Optional — profile uses a placeholder when empty. */
   photo_url?: string | null;
   intro_video_url?: string | null;
+  /** Short recitation / teaching voice sample (HTTPS audio). */
+  intro_audio_url?: string | null;
   rating_avg?: number | null;
   review_count?: number;
   reviews?: ListingReview[];
@@ -149,6 +151,7 @@ export function normalizeListing(raw: ListingDoc): TutorListing {
     age_bands: ageBands,
     photo_url: raw.photo_url ?? null,
     intro_video_url: raw.intro_video_url ?? null,
+    intro_audio_url: raw.intro_audio_url ?? null,
     rating_avg: raw.rating_avg ?? null,
     review_count: raw.review_count ?? 0,
     reviews: raw.reviews ?? [],
@@ -186,6 +189,61 @@ export function subjectLabel(value: string): string {
 export function genderLabel(value: ListingGender | null | undefined): string {
   if (!value) return "";
   return LISTING_GENDER_OPTIONS.find((g) => g.value === value)?.label ?? value;
+}
+
+/** True when listing has a non-empty intro video URL. */
+export function hasListingIntroVideo(
+  listing: Pick<TutorListing, "intro_video_url"> | null | undefined,
+): boolean {
+  return Boolean(listing?.intro_video_url?.trim());
+}
+
+/** True when listing has a playable intro voice sample. */
+export function hasListingIntroAudio(
+  listing: Pick<TutorListing, "intro_audio_url"> | null | undefined,
+): boolean {
+  return Boolean(listing?.intro_audio_url?.trim());
+}
+
+const AUDIO_URL_EXT = /\.(mp3|m4a|wav|ogg|oga|webm|aac)(\?|$)/i;
+
+/** Accept direct HTTPS audio URLs (Cloudinary, CDN, etc.). */
+export function isLikelyIntroAudioUrl(url: string): boolean {
+  const raw = url.trim();
+  if (!raw) return false;
+  try {
+    const u = new URL(raw);
+    if (u.protocol !== "https:") return false;
+    if (AUDIO_URL_EXT.test(u.pathname)) return true;
+    // Cloudinary / signed media often omit extensions
+    if (
+      u.hostname.includes("cloudinary.com") ||
+      u.hostname.includes("res.cloudinary.com")
+    ) {
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+/** YouTube watch / youtu.be → privacy-enhanced embed URL. */
+export function listingIntroVideoEmbedUrl(url: string): string | null {
+  try {
+    const u = new URL(url.trim());
+    if (u.hostname.includes("youtu.be")) {
+      const id = u.pathname.replace("/", "").split("/")[0];
+      return id ? `https://www.youtube-nocookie.com/embed/${id}` : null;
+    }
+    if (u.hostname.includes("youtube.com")) {
+      const id = u.searchParams.get("v");
+      return id ? `https://www.youtube-nocookie.com/embed/${id}` : null;
+    }
+  } catch {
+    return null;
+  }
+  return null;
 }
 
 export type ListingField =

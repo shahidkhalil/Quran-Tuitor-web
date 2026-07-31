@@ -70,6 +70,9 @@ export type ScheduledLesson = {
   attendance_marked_at?: string | null;
   /** Story 6.2 */
   progress_note_id?: string | null;
+  /** Lesson reminder cron (additive) */
+  reminder_24h_sent_at?: string | null;
+  reminder_15m_sent_at?: string | null;
   created_at: string;
   updated_at: string;
 };

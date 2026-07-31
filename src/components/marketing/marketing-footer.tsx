@@ -32,6 +32,38 @@ export async function MarketingFooter() {
             </li>
             <li>
               <Link
+                href="/courses"
+                className="text-[var(--color-on-surface)] transition hover:text-[var(--color-primary)]"
+              >
+                Courses
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/guides"
+                className="text-[var(--color-on-surface)] transition hover:text-[var(--color-primary)]"
+              >
+                Guides
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/blog"
+                className="text-[var(--color-on-surface)] transition hover:text-[var(--color-primary)]"
+              >
+                Blog
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/reviews"
+                className="text-[var(--color-on-surface)] transition hover:text-[var(--color-primary)]"
+              >
+                Reviews
+              </Link>
+            </li>
+            <li>
+              <Link
                 href="/teach"
                 className="text-[var(--color-on-surface)] transition hover:text-[var(--color-primary)]"
               >

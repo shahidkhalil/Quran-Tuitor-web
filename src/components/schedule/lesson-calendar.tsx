@@ -25,6 +25,7 @@ import {
 } from "@/domain/calendar";
 import { formatLessonSlot } from "@/domain/recurring-bookings";
 import type { ScheduledLesson } from "@/domain/recurring-bookings";
+import { joinViaSystemCheck } from "@/domain/system-check";
 
 export type CalendarLessonItem = ScheduledLesson & {
   /** Tutor headline (parent) or learner name (tutor) */
@@ -43,6 +44,8 @@ type Props = {
   enableProgressNotes?: boolean;
   /** Parent: lesson IDs that already have a review */
   reviewedLessonIds?: string[];
+  /** Routes Join through pre-lesson system check */
+  joinRole?: "parent" | "tutor";
 };
 
 function statusTone(status: ScheduledLesson["status"]) {
@@ -70,6 +73,7 @@ function LessonDetailCard({
   showTutorNoShowHelp,
   enableProgressNotes,
   reviewedLessonIds,
+  joinRole,
 }: {
   lesson: CalendarLessonItem;
   helpHref: string;
@@ -78,6 +82,7 @@ function LessonDetailCard({
   showTutorNoShowHelp: boolean;
   enableProgressNotes: boolean;
   reviewedLessonIds: string[];
+  joinRole: "parent" | "tutor";
 }) {
   const hasJoin =
     Boolean(lesson.meeting_url) && lesson.status === "scheduled";
@@ -92,6 +97,10 @@ function LessonDetailCard({
     lesson.status === "completed" &&
     Boolean(lesson.progress_note_id);
   const alreadyReviewed = reviewedLessonIds.includes(lesson.id);
+  const joinHref =
+    hasJoin && lesson.meeting_url
+      ? joinViaSystemCheck(lesson.meeting_url, joinRole)
+      : null;
 
   return (
     <article className="surface-card p-5 md:p-6">
@@ -113,18 +122,14 @@ function LessonDetailCard({
         45-minute paid lesson · platform join link
       </p>
 
-      {hasJoin && lesson.meeting_url ? (
+      {hasJoin && joinHref ? (
         <div className="mt-4 space-y-2">
-          <a
-            href={lesson.meeting_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn-panel btn-panel-primary"
-          >
+          <a href={joinHref} className="btn-panel btn-panel-primary">
             Join lesson
           </a>
           <p className="text-xs text-[var(--color-on-surface-muted)]">
-            Opens in a new tab. If it doesn&apos;t work,{" "}
+            Opens a quick device check, then your lesson link. If it doesn&apos;t
+            work,{" "}
             <Link
               href={helpHref}
               className="font-medium text-[var(--color-primary)] underline-offset-2 hover:underline"
@@ -269,6 +274,7 @@ export function LessonCalendar({
   showTutorNoShowHelp = false,
   enableProgressNotes = false,
   reviewedLessonIds = [],
+  joinRole = "parent",
 }: Props) {
   const [nowMs, setNowMs] = useState(() => Date.now());
   const now = useMemo(() => new Date(nowMs), [nowMs]);
@@ -667,6 +673,7 @@ export function LessonCalendar({
                     showTutorNoShowHelp={showTutorNoShowHelp}
                     enableProgressNotes={enableProgressNotes}
                     reviewedLessonIds={reviewedLessonIds}
+                    joinRole={joinRole}
                   />
                 </div>
               ))}

@@ -52,6 +52,7 @@ function valuesFromListing(listing: TutorListing | null): FormValues {
         : "",
     photoUrl: listing?.photo_url ?? "",
     introVideoUrl: listing?.intro_video_url ?? "",
+    introAudioUrl: listing?.intro_audio_url ?? "",
     subjects: (listing?.subjects ?? []) as ListingSubject[],
     ageBands: (listing?.age_bands ?? []) as ListingAgeBand[],
   };
@@ -194,13 +195,58 @@ export function ListingEditorForm({ listing }: Props) {
               </div>
               <div>
                 <label htmlFor="introVideoUrl" className="text-sm font-semibold">
-                  Intro video URL (optional)
+                  Intro video URL
                 </label>
+                <p className="mt-0.5 text-xs text-[var(--color-on-surface-muted)]">
+                  Paste a YouTube link (recommended). Parents see a play badge
+                  on Browse and can watch on your profile before booking a free
+                  trial. Google Drive links open externally.
+                </p>
                 <input
                   id="introVideoUrl"
                   name="introVideoUrl"
                   defaultValue={values.introVideoUrl}
-                  placeholder="YouTube or Drive link"
+                  placeholder="https://www.youtube.com/watch?v=…"
+                  className={fieldClass}
+                />
+              </div>
+              <div>
+                <label htmlFor="introAudioUrl" className="text-sm font-semibold">
+                  Intro voice sample
+                </label>
+                <p className="mt-0.5 text-xs text-[var(--color-on-surface-muted)]">
+                  Short recitation or greeting so parents can hear your voice
+                  before a free trial. Upload MP3/M4A/WAV (max 8 MB) or paste an
+                  HTTPS audio URL.
+                </p>
+                {values.introAudioUrl ? (
+                  <div className="mt-2 space-y-2">
+                    <audio
+                      controls
+                      preload="metadata"
+                      src={values.introAudioUrl}
+                      className="w-full max-w-md"
+                    >
+                      Your browser does not support audio.
+                    </audio>
+                    <label className="flex items-center gap-2 text-xs text-[var(--color-on-surface-muted)]">
+                      <input type="checkbox" name="clearIntroAudio" value="1" />
+                      Remove current voice sample
+                    </label>
+                  </div>
+                ) : null}
+                <input
+                  id="introAudio"
+                  name="introAudio"
+                  type="file"
+                  accept="audio/mpeg,audio/mp4,audio/x-m4a,audio/wav,audio/webm,audio/ogg,audio/*"
+                  className="mt-2 block w-full rounded-[var(--radius-md)] border border-dashed border-[var(--color-outline-strong)]/40 bg-[var(--color-surface-elevated)] px-3 py-3 text-sm file:mr-3 file:rounded-full file:border-0 file:bg-[var(--color-primary)] file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white"
+                />
+                <input
+                  id="introAudioUrl"
+                  name="introAudioUrl"
+                  defaultValue={values.introAudioUrl}
+                  placeholder="https://…/sample.mp3"
                   className={fieldClass}
                 />
               </div>

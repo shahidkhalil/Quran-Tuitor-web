@@ -17,6 +17,8 @@ export type ProgressNote = {
   covered: string;
   improve: string;
   homework: string;
+  /** Parent checklist — keys of completed homework lines (additive). */
+  homework_done_keys?: string[];
   created_at: string;
   updated_at: string;
   /** Set only if Admin corrects later */

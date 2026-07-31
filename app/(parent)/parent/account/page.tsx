@@ -10,6 +10,36 @@ export const metadata = { title: "Account" };
 
 const quickLinks = [
   {
+    href: "/parent/watch",
+    title: "Parental Watch",
+    body: "Progress, attendance, and upcoming per learner",
+    icon: "W",
+  },
+  {
+    href: "/parent/family",
+    title: "Family sharing",
+    body: "Invite a co-parent to view-only Watch",
+    icon: "F",
+  },
+  {
+    href: "/parent/revision",
+    title: "Revision",
+    body: "Homework from tutor progress notes",
+    icon: "R",
+  },
+  {
+    href: "/parent/hifz",
+    title: "Hifz tracker",
+    body: "Surah and ayah memorisation progress",
+    icon: "H",
+  },
+  {
+    href: "/parent/archives",
+    title: "Archives",
+    body: "Past lessons and closed trials",
+    icon: "A",
+  },
+  {
     href: "/parent/learners",
     title: "Learners",
     body: "Family profiles and progress notes",
@@ -40,10 +70,16 @@ const quickLinks = [
     icon: "M",
   },
   {
+    href: "/parent/help",
+    title: "Help",
+    body: "FAQs for trials, join links, rematch",
+    icon: "?",
+  },
+  {
     href: "/parent/support",
     title: "Support",
     body: "Cases from trials or paid lessons",
-    icon: "?",
+    icon: "S",
   },
 ] as const;
 

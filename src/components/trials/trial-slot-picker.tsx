@@ -8,14 +8,20 @@ type Props = {
   slots: TrialSlotOption[];
   availabilitySummary: string;
   error?: string;
+  initialSlotStart?: string;
 };
 
 export function TrialSlotPicker({
   slots,
   availabilitySummary,
   error,
+  initialSlotStart = "",
 }: Props) {
-  const [selected, setSelected] = useState<string>("");
+  const validInitial =
+    initialSlotStart && slots.some((s) => s.start === initialSlotStart)
+      ? initialSlotStart
+      : "";
+  const [selected, setSelected] = useState<string>(validInitial);
   const days = useMemo(() => groupSlotsByDay(slots), [slots]);
   const selectedSlot = slots.find((s) => s.start === selected);
 

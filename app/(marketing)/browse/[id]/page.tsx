@@ -2,6 +2,7 @@ import { ListingDetail } from "@/components/listings/listing-detail";
 import { MarketingShell } from "@/components/marketing/marketing-shell";
 import { getListingParentCta } from "@/server/actions/listing-parent-cta";
 import { getMyShortlistIds } from "@/server/actions/shortlist";
+import { getTrialSlotsForListing } from "@/server/actions/trials";
 import { getPublishedListingById } from "@/server/actions/tutor-listings";
 import { getCurrentProfile } from "@/server/services/profile";
 import type { Metadata } from "next";
@@ -40,6 +41,8 @@ export default async function PublicListingPage({ params }: Props) {
     parentCta = cta;
   }
 
+  const { slots: trialSlots } = await getTrialSlotsForListing(listing.id);
+
   return (
     <MarketingShell>
       <main className="min-h-full">
@@ -47,6 +50,7 @@ export default async function PublicListingPage({ params }: Props) {
           listing={listing}
           shortlisted={shortlisted}
           parentCta={parentCta}
+          trialSlots={trialSlots}
         />
       </main>
     </MarketingShell>

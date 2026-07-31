@@ -17,6 +17,7 @@ import type { ListingReview, TutorListing } from "@/domain/tutor-listings";
 import { COLLECTIONS, db, docId, nowIso } from "@/lib/firebase/db";
 import { isAuthConfigured } from "@/lib/firebase/server-auth";
 import { getCurrentProfile } from "@/server/services/profile";
+import { listPublishedListings } from "@/server/actions/tutor-listings";
 
 export type SubmitLessonReviewState = {
   error?: string;
@@ -226,6 +227,7 @@ export async function submitLessonReview(
 
   revalidatePath("/browse");
   revalidatePath(`/browse/${lesson.listing_id}`);
+  revalidatePath("/reviews");
   revalidatePath("/parent/schedule");
   revalidatePath("/parent/bookings");
   revalidatePath("/tutor");
@@ -565,6 +567,7 @@ export async function adminHideLessonReview(
   revalidatePath("/admin/reviews");
   revalidatePath("/browse");
   revalidatePath(`/browse/${before.listing_id}`);
+  revalidatePath("/reviews");
   revalidatePath("/tutor");
   redirect(`/admin/reviews?hidden=1`);
 }
@@ -606,5 +609,86 @@ export async function adminUnhideLessonReview(formData: FormData) {
   revalidatePath("/admin/reviews");
   revalidatePath("/browse");
   revalidatePath(`/browse/${before.listing_id}`);
+  revalidatePath("/reviews");
   redirect("/admin/reviews?restored=1");
+}
+
+export type PublicReviewCard = {
+  id: string;
+  rating: number;
+  body: string;
+  author_display: string;
+  created_at: string;
+  listing_id: string;
+  listing_headline: string;
+  listing_photo_url: string | null;
+  listing_rating_avg: number | null;
+};
+
+export type PublicReviewShowcase = {
+  reviewCount: number;
+  ratingAvg: number | null;
+  tutorsWithReviews: number;
+  publishedTutorCount: number;
+  reviews: PublicReviewCard[];
+};
+
+/** Marketing social proof — public reviews from published listings only. */
+export async function getPublicReviewShowcase(): Promise<{
+  showcase: PublicReviewShowcase;
+  error?: string;
+}> {
+  const empty: PublicReviewShowcase = {
+    reviewCount: 0,
+    ratingAvg: null,
+    tutorsWithReviews: 0,
+    publishedTutorCount: 0,
+    reviews: [],
+  };
+
+  const { listings, error } = await listPublishedListings();
+  if (error && listings.length === 0) {
+    return { showcase: empty, error };
+  }
+
+  const cards: PublicReviewCard[] = [];
+  let ratingSum = 0;
+  let ratingN = 0;
+  let tutorsWithReviews = 0;
+
+  for (const listing of listings) {
+    const reviews = (listing.reviews ?? []).filter((r) => r.body?.trim());
+    if (reviews.length > 0 || (listing.review_count ?? 0) > 0) {
+      tutorsWithReviews += 1;
+    }
+    if (listing.rating_avg != null && (listing.review_count ?? 0) > 0) {
+      ratingSum += listing.rating_avg * (listing.review_count ?? 0);
+      ratingN += listing.review_count ?? 0;
+    }
+    for (const review of reviews) {
+      cards.push({
+        id: review.id,
+        rating: review.rating,
+        body: review.body,
+        author_display: review.author_display,
+        created_at: review.created_at,
+        listing_id: listing.id,
+        listing_headline: listing.headline,
+        listing_photo_url: listing.photo_url ?? null,
+        listing_rating_avg: listing.rating_avg ?? null,
+      });
+    }
+  }
+
+  cards.sort((a, b) => b.created_at.localeCompare(a.created_at));
+
+  return {
+    showcase: {
+      reviewCount: ratingN || cards.length,
+      ratingAvg: ratingN > 0 ? Math.round((ratingSum / ratingN) * 10) / 10 : null,
+      tutorsWithReviews,
+      publishedTutorCount: listings.length,
+      reviews: cards.slice(0, 48),
+    },
+  };
 }

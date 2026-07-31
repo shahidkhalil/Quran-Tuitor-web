@@ -3,8 +3,11 @@ import { ShortlistToggle } from "@/components/listings/shortlist-toggle";
 import {
   formatLessonRate,
   genderLabel,
+  hasListingIntroAudio,
+  hasListingIntroVideo,
   listingInitials,
   subjectLabel,
+  timezoneLabel,
   type TutorListing,
 } from "@/domain/tutor-listings";
 
@@ -113,6 +116,33 @@ export function BrowseResults({
                     <h2 className="mt-1 font-[family-name:var(--font-fraunces)] text-lg font-medium leading-snug text-[var(--color-primary)]">
                       {listing.headline}
                     </h2>
+                    {hasListingIntroVideo(listing) ||
+                    hasListingIntroAudio(listing) ? (
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {hasListingIntroVideo(listing) ? (
+                          <p className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-outline)] bg-[var(--color-surface-elevated)] px-2.5 py-1 text-[11px] font-semibold text-[var(--color-primary)]">
+                            <span
+                              aria-hidden
+                              className="text-[var(--color-accent)]"
+                            >
+                              ▶
+                            </span>
+                            Intro video
+                          </p>
+                        ) : null}
+                        {hasListingIntroAudio(listing) ? (
+                          <p className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-outline)] bg-[var(--color-surface-elevated)] px-2.5 py-1 text-[11px] font-semibold text-[var(--color-primary)]">
+                            <span
+                              aria-hidden
+                              className="text-[var(--color-accent)]"
+                            >
+                              ♪
+                            </span>
+                            Voice sample
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
                 <p className="mt-4 line-clamp-3 text-sm leading-relaxed text-[var(--color-on-surface-muted)]">
@@ -136,6 +166,9 @@ export function BrowseResults({
                     <p className="mt-1.5 text-sm text-[var(--color-on-surface-muted)]">
                       {listing.languages}
                       {listing.gender ? ` · ${genderLabel(listing.gender)}` : ""}
+                      {listing.timezone
+                        ? ` · ${timezoneLabel(listing.timezone)}`
+                        : ""}
                       {listing.years_teaching != null
                         ? ` · ${listing.years_teaching} yrs`
                         : ""}

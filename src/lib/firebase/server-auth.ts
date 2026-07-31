@@ -60,6 +60,20 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   }
 }
 
+/** Email verification flag from the session cookie (does not change auth flow). */
+export async function getSessionEmailVerified(): Promise<boolean | null> {
+  if (!isAuthConfigured()) return null;
+  const store = await cookies();
+  const raw = store.get(SESSION_COOKIE_NAME)?.value;
+  if (!raw) return null;
+  try {
+    const decoded = await getAdminAuth().verifySessionCookie(raw, true);
+    return Boolean(decoded.email_verified);
+  } catch {
+    return null;
+  }
+}
+
 export async function getRoleForUid(uid: string): Promise<UserRole> {
   const snap = await getAdminDb().collection("profiles").doc(uid).get();
   const role = snap.data()?.role as UserRole | undefined;

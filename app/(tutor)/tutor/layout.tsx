@@ -1,5 +1,6 @@
 import { NotificationBellHost } from "@/components/notifications/notification-bell-host";
 import { TutorShell } from "@/components/shell/tutor-shell";
+import { listMyMessageThreads } from "@/server/actions/messages";
 import { getCurrentProfile } from "@/server/services/profile";
 
 export default async function TutorPagesLayout({
@@ -9,6 +10,10 @@ export default async function TutorPagesLayout({
 }>) {
   const profile = await getCurrentProfile();
   const isVerified = profile?.role === "tutor";
+  const { threads } =
+    profile && isVerified
+      ? await listMyMessageThreads()
+      : { threads: [] };
 
   return (
     <TutorShell
@@ -16,6 +21,7 @@ export default async function TutorPagesLayout({
       email={profile?.email}
       photoUrl={profile?.photo_url}
       notificationBell={<NotificationBellHost />}
+      messageCount={threads.length}
     >
       {children}
     </TutorShell>

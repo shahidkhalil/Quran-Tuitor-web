@@ -25,6 +25,7 @@ import {
   RATE_MIN_USD,
   SUBJECT_OPTIONS,
   fieldLabel,
+  isLikelyIntroAudioUrl,
   missingPublishFields,
   normalizeListing,
   type ListingAgeBand,
@@ -53,6 +54,7 @@ export type ListingFormState = {
     rateUsd: string;
     photoUrl: string;
     introVideoUrl: string;
+    introAudioUrl: string;
     subjects: ListingSubject[];
     ageBands: ListingAgeBand[];
   };
@@ -218,6 +220,7 @@ function parseListingInput(formData: FormData): {
   data: Partial<TutorListing>;
   values: NonNullable<ListingFormState["values"]>;
   fieldErrors: Partial<Record<ListingField, string>>;
+  introAudioError?: string;
 } {
   const fieldErrors: Partial<Record<ListingField, string>> = {};
   const headline = String(formData.get("headline") ?? "").trim();
@@ -238,8 +241,23 @@ function parseListingInput(formData: FormData): {
     formData.get("rateUsd") ?? formData.get("rateGbp") ?? "",
   ).trim();
   const introVideoUrl = String(formData.get("introVideoUrl") ?? "").trim();
+  const introAudioUrl = String(formData.get("introAudioUrl") ?? "").trim();
+  const clearIntroAudio = formData.get("clearIntroAudio") === "1";
   const subjects = parseSubjects(formData);
   const ageBands = parseAgeBands(formData);
+
+  let introAudioError: string | undefined;
+  let intro_audio_url: string | null | undefined = undefined;
+  if (clearIntroAudio) {
+    intro_audio_url = null;
+  } else if (introAudioUrl) {
+    if (!isLikelyIntroAudioUrl(introAudioUrl)) {
+      introAudioError =
+        "Intro voice URL must be HTTPS audio (mp3, m4a, wav, ogg, webm) or a Cloudinary link.";
+    } else {
+      intro_audio_url = introAudioUrl;
+    }
+  }
 
   const gender = GENDER_VALUES.includes(genderRaw as ListingGender)
     ? (genderRaw as ListingGender)
@@ -288,6 +306,7 @@ function parseListingInput(formData: FormData): {
     rateUsd: rateRaw,
     photoUrl: "",
     introVideoUrl,
+    introAudioUrl: clearIntroAudio ? "" : introAudioUrl,
     subjects,
     ageBands,
   };
@@ -295,6 +314,7 @@ function parseListingInput(formData: FormData): {
   return {
     fieldErrors,
     values,
+    introAudioError,
     data: {
       headline,
       bio,
@@ -311,6 +331,9 @@ function parseListingInput(formData: FormData): {
       currency: LISTING_CURRENCY,
       subjects,
       intro_video_url: introVideoUrl || null,
+      ...(intro_audio_url !== undefined
+        ? { intro_audio_url }
+        : {}),
     },
   };
 }
@@ -402,6 +425,10 @@ async function saveListingPayload(
       merged.intro_video_url !== undefined
         ? merged.intro_video_url
         : (prev?.intro_video_url ?? null),
+    intro_audio_url:
+      merged.intro_audio_url !== undefined
+        ? merged.intro_audio_url
+        : (prev?.intro_audio_url ?? null),
     rating_avg: prev?.rating_avg ?? null,
     review_count: prev?.review_count ?? 0,
     reviews: prev?.reviews ?? [],
@@ -452,6 +479,54 @@ async function maybeUploadListingPhoto(
   }
 }
 
+const INTRO_AUDIO_TYPES = new Set([
+  "audio/mpeg",
+  "audio/mp3",
+  "audio/mp4",
+  "audio/x-m4a",
+  "audio/wav",
+  "audio/wave",
+  "audio/x-wav",
+  "audio/webm",
+  "audio/ogg",
+  "audio/aac",
+]);
+
+async function maybeUploadListingIntroAudio(
+  formData: FormData,
+  data: Partial<TutorListing>,
+): Promise<{ data: Partial<TutorListing>; error?: string }> {
+  const file = formData.get("introAudio");
+  if (!(file instanceof File) || file.size === 0) {
+    return { data };
+  }
+  const typeOk =
+    INTRO_AUDIO_TYPES.has(file.type) || file.type.startsWith("audio/");
+  if (!typeOk) {
+    return {
+      data,
+      error: "Intro voice must be an audio file (MP3, M4A, WAV, OGG, or WebM).",
+    };
+  }
+  if (file.size > 8 * 1024 * 1024) {
+    return { data, error: "Intro voice must be 8 MB or smaller." };
+  }
+  if (!isCloudinaryConfigured()) {
+    return {
+      data,
+      error:
+        "Audio upload is not configured. Paste an HTTPS audio URL instead, or add Cloudinary keys.",
+    };
+  }
+  try {
+    const uploaded = await uploadFileToCloudinary(file, "listing-intro-audio");
+    return { data: { ...data, intro_audio_url: uploaded.url } };
+  } catch (err) {
+    console.error("[listing intro audio]", err);
+    return { data, error: "Could not upload intro voice. Try again." };
+  }
+}
+
 export async function saveListingDraft(
   _prev: ListingFormState,
   formData: FormData,
@@ -460,6 +535,9 @@ export async function saveListingDraft(
   if (!ctx.ok) return { error: ctx.error };
 
   const parsed = parseListingInput(formData);
+  if (parsed.introAudioError) {
+    return { values: parsed.values, error: parsed.introAudioError };
+  }
   if (Object.keys(parsed.fieldErrors).length > 0) {
     return {
       values: parsed.values,
@@ -468,17 +546,25 @@ export async function saveListingDraft(
     };
   }
 
-  const uploaded = await maybeUploadListingPhoto(formData, parsed.data);
-  if (uploaded.error) {
-    return { values: parsed.values, error: uploaded.error };
+  const withPhoto = await maybeUploadListingPhoto(formData, parsed.data);
+  if (withPhoto.error) {
+    return { values: parsed.values, error: withPhoto.error };
+  }
+  const withAudio = await maybeUploadListingIntroAudio(
+    formData,
+    withPhoto.data,
+  );
+  if (withAudio.error) {
+    return { values: parsed.values, error: withAudio.error };
   }
 
-  const saved = await saveListingPayload(ctx.profile.id, uploaded.data, {
+  const saved = await saveListingPayload(ctx.profile.id, withAudio.data, {
     publish: false,
   });
   const nextValues = {
     ...parsed.values,
     photoUrl: saved.listing.photo_url ?? "",
+    introAudioUrl: saved.listing.intro_audio_url ?? "",
   };
 
   revalidatePath("/tutor");
@@ -508,6 +594,9 @@ export async function publishListing(
   }
 
   const parsed = parseListingInput(formData);
+  if (parsed.introAudioError) {
+    return { values: parsed.values, error: parsed.introAudioError };
+  }
   if (Object.keys(parsed.fieldErrors).length > 0) {
     return {
       values: parsed.values,
@@ -516,22 +605,32 @@ export async function publishListing(
     };
   }
 
-  const uploaded = await maybeUploadListingPhoto(formData, parsed.data);
-  if (uploaded.error) {
-    return { values: parsed.values, error: uploaded.error };
+  const withPhoto = await maybeUploadListingPhoto(formData, parsed.data);
+  if (withPhoto.error) {
+    return { values: parsed.values, error: withPhoto.error };
+  }
+  const withAudio = await maybeUploadListingIntroAudio(
+    formData,
+    withPhoto.data,
+  );
+  if (withAudio.error) {
+    return { values: parsed.values, error: withAudio.error };
   }
 
   const existingSnap = await listingRef(ctx.profile.id).get();
-  const existingPhoto =
-    existingSnap.exists
-      ? ((existingSnap.data()?.photo_url as string | null | undefined) ?? null)
-      : null;
+  const existing = existingSnap.exists
+    ? (existingSnap.data() as Partial<TutorListing>)
+    : null;
   const nextValues = {
     ...parsed.values,
-    photoUrl: uploaded.data.photo_url ?? existingPhoto ?? "",
+    photoUrl: withAudio.data.photo_url ?? existing?.photo_url ?? "",
+    introAudioUrl:
+      withAudio.data.intro_audio_url !== undefined
+        ? (withAudio.data.intro_audio_url ?? "")
+        : (existing?.intro_audio_url ?? ""),
   };
 
-  const missing = missingPublishFields(uploaded.data);
+  const missing = missingPublishFields(withAudio.data);
   if (missing.length > 0) {
     const errors: Partial<Record<ListingField, string>> = {};
     for (const field of missing) {
@@ -544,7 +643,7 @@ export async function publishListing(
     };
   }
 
-  await saveListingPayload(ctx.profile.id, uploaded.data, { publish: true });
+  await saveListingPayload(ctx.profile.id, withAudio.data, { publish: true });
   revalidatePath("/tutor");
   revalidatePath("/tutor/listing");
   revalidatePath("/browse");
